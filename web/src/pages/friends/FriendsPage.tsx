@@ -22,12 +22,56 @@ interface SearchResult {
   uniqueId: string;
 }
 
+interface PendingRequest {
+  _id: string;
+  requesterId: {
+    _id: string;
+    name: string;
+    picture?: string;
+  };
+}
+
+interface Friend {
+  id: string;
+  name: string;
+  picture?: string;
+  status: 'offline' | 'nearby';
+}
+
 export function FriendsPage() {
-  const { friends, requests, setRequests, addFriend, removeFriend } = useFriendStore();
+  const { friends, setFriends, requests, setRequests, addFriend, removeFriend } = useFriendStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load friends
+        const friendsRes = await api.get('/api/friends');
+        if (friendsRes.data.data) {
+          const mappedFriends = friendsRes.data.data.map((f: any) => ({
+            id: f._id,
+            name: f.name,
+            picture: f.picture,
+            status: 'offline' as const,
+          }));
+          setFriends(mappedFriends);
+        }
+
+        // Load pending requests
+        const requestsRes = await api.get('/api/friends/requests');
+        if (requestsRes.data.data) {
+          setRequests(requestsRes.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -57,23 +101,28 @@ export function FriendsPage() {
     }
   };
 
-  const handleAcceptRequest = async (userId: string) => {
+  const handleAcceptRequest = async (requestId: string, requesterId: string, requesterName: string) => {
     try {
-      await api.post(`/friends/${userId}/accept`);
-      const request = requests.find((r) => r.id === userId);
-      if (request) {
-        addFriend(request);
-        setRequests(requests.filter((r) => r.id !== userId));
-      }
+      await api.post(`/api/friends/request/${requestId}/accept`);
+      
+      // Add to friends list
+      addFriend({
+        id: requesterId,
+        name: requesterName,
+        status: 'offline',
+      });
+      
+      // Remove from requests
+      setRequests(requests.filter((r: any) => r._id !== requestId));
     } catch (error) {
       console.error('Failed to accept request:', error);
     }
   };
 
-  const handleRejectRequest = async (userId: string) => {
+  const handleRejectRequest = async (requestId: string) => {
     try {
-      await api.post(`/friends/${userId}/reject`);
-      setRequests(requests.filter((r) => r.id !== userId));
+      await api.post(`/api/friends/request/${requestId}/reject`);
+      setRequests(requests.filter((r: any) => r._id !== requestId));
     } catch (error) {
       console.error('Failed to reject request:', error);
     }
@@ -81,7 +130,7 @@ export function FriendsPage() {
 
   const handleRemoveFriend = async (userId: string) => {
     try {
-      await api.delete(`/friends/${userId}`);
+      await api.delete(`/api/friends/${userId}`);
       removeFriend(userId);
     } catch (error) {
       console.error('Failed to remove friend:', error);
@@ -164,25 +213,25 @@ export function FriendsPage() {
                     </span>
                   </div>
                   <div className="space-y-4">
-                    {requests.map((request) => (
+                    {requests.map((request: PendingRequest) => (
                       <div
-                        key={request.id}
+                        key={request._id}
                         className="flex items-center justify-between p-4 bg-surface rounded-[1.5rem] border border-[var(--border)] group hover:border-primary/30 transition-colors"
                       >
                         <div className="flex items-center gap-4">
                           <img
-                            src={request.picture || `https://ui-avatars.com/api/?name=${request.name}&background=f59e0b&color=fff`}
+                            src={request.requesterId.picture || `https://ui-avatars.com/api/?name=${request.requesterId.name}&background=f59e0b&color=fff`}
                             alt=""
                             className="w-12 h-12 rounded-xl object-cover"
                           />
-                          <span className="text-sm font-bold tracking-tight">{request.name}</span>
+                          <span className="text-sm font-bold tracking-tight">{request.requesterId.name}</span>
                         </div>
                         <div className="flex gap-2">
                           <Button 
                             variant="primary" 
                             size="sm" 
                             className="w-9 h-9 p-0 rounded-xl"
-                            onClick={() => handleAcceptRequest(request.id)}
+                            onClick={() => handleAcceptRequest(request._id, request.requesterId._id, request.requesterId.name)}
                           >
                             <Check className="w-4 h-4" />
                           </Button>
@@ -190,7 +239,7 @@ export function FriendsPage() {
                             variant="glass"
                             size="sm"
                             className="w-9 h-9 p-0 rounded-xl"
-                            onClick={() => handleRejectRequest(request.id)}
+                            onClick={() => handleRejectRequest(request._id)}
                           >
                             <X className="w-4 h-4" />
                           </Button>

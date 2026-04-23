@@ -69,4 +69,11 @@ export class FriendService {
 
     return friends;
   }
+
+  static async getPendingRequests(userId: string): Promise<IFriendRequest[]> {
+    return FriendRequest.find({
+      recipientId: userId,
+      status: 'pending',
+    }).populate('requesterId', 'name picture uniqueId');
+  }
 }

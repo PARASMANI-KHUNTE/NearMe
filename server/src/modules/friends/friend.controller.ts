@@ -109,4 +109,22 @@ export class FriendController {
       });
     }
   }
+
+  static async listPendingRequests(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user._id.toString();
+      const requests = await FriendService.getPendingRequests(userId);
+
+      res.status(200).json({
+        success: true,
+        data: requests,
+        message: 'Pending requests retrieved',
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error fetching pending requests',
+      });
+    }
+  }
 }
