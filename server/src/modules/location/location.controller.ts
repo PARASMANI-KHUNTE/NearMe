@@ -29,7 +29,6 @@ export class LocationController {
   }
 
   static async getNearbyUsers(req: AuthRequest, res: Response): Promise<void> {
-    console.log('--- FETCHING NEARBY USERS ---', req.query);
     try {
       const { lat, lng, radius } = req.query;
 
@@ -43,9 +42,14 @@ export class LocationController {
 
       const locations = await LocationService.getNearbyUsers(coordinates, radiusMeters);
 
+      // Map to client-friendly format
+      const nearbyUsers = locations.map((loc) => ({
+        id: loc.userId.toString(),
+      }));
+
       res.status(200).json({
         success: true,
-        data: locations,
+        data: nearbyUsers,
       });
     } catch (error: any) {
       res.status(500).json({
