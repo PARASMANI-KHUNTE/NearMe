@@ -1,0 +1,25 @@
+name: Bug report
+description: Report something that isn't working
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: What did you expect, and what actually happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Environment
+      placeholder: "OS, Node version, package (server/web/mobile)"
+

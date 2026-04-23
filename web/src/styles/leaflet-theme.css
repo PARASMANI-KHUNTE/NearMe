@@ -1,0 +1,58 @@
+.leaflet-container {
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Popup */
+.leaflet-popup-content-wrapper {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.35);
+}
+
+.light .leaflet-popup-content-wrapper {
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-tip {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+/* Attribution */
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text-muted);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--text);
+}
+
+/* Controls */
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  color: var(--text-muted);
+}
+
+.leaflet-touch .leaflet-bar a {
+  border-radius: 14px;
+}
+

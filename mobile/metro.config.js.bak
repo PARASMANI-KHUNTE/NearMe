@@ -1,0 +1,11 @@
+const { getDefaultConfig } = require('expo/metro-config');
+const exclusionList = require('metro-config/src/defaults/exclusionList');
+
+const config = getDefaultConfig(__dirname);
+
+// Avoid Metro watcher crashes from transient native build temp folders.
+config.resolver.blockList = exclusionList([
+  /.*\\node_modules\\expo-modules-core\\android\\\.cxx\\.*/,
+]);
+
+module.exports = config;

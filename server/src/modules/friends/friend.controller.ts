@@ -1,0 +1,112 @@
+import { Response } from 'express';
+import { AuthRequest } from '../../shared/middlewares/auth.middleware';
+import { FriendService } from './friend.service';
+import { NotificationService } from '../notifications/notification.service';
+import { User } from '../users/user.model';
+
+export class FriendController {
+  static async sendRequest(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const requesterId = req.user._id.toString();
+      const { recipientId } = req.body;
+
+      if (!recipientId) {
+        res.status(400).json({ success: false, message: 'recipientId is required' });
+        return;
+      }
+
+      const request = await FriendService.sendRequest(requesterId, recipientId);
+
+      // Get requester name for notification
+      const requester = await User.findById(requesterId).select('name');
+
+      // Send notification to recipient
+      await NotificationService.createAndEmit(
+        recipientId,
+        'friend_request',
+        `${requester?.name || 'Someone'} sent you a friend request`,
+        { requestId: request._id }
+      );
+
+      res.status(201).json({
+        success: true,
+        data: request,
+        message: 'Friend request sent',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error sending friend request',
+      });
+    }
+  }
+
+  static async acceptRequest(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const recipientId = req.user._id.toString();
+      const requestId = req.params.requestId as string;
+
+      const request = await FriendService.respondToRequest(recipientId, requestId, 'accepted');
+
+      // Get recipient name for notification
+      const recipient = await User.findById(recipientId).select('name');
+
+      // Notify the requester
+      await NotificationService.createAndEmit(
+        request.requesterId.toString(),
+        'friend_accepted',
+        `${recipient?.name || 'Someone'} accepted your friend request`,
+        { friendId: recipientId }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: request,
+        message: 'Friend request accepted',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error accepting friend request',
+      });
+    }
+  }
+
+  static async rejectRequest(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const recipientId = req.user._id.toString();
+      const requestId = req.params.requestId as string;
+
+      const request = await FriendService.respondToRequest(recipientId, requestId, 'rejected');
+
+      res.status(200).json({
+        success: true,
+        data: request,
+        message: 'Friend request rejected',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error rejecting friend request',
+      });
+    }
+  }
+
+  static async listFriends(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user._id.toString();
+      const friends = await FriendService.listFriends(userId);
+
+      res.status(200).json({
+        success: true,
+        data: friends,
+        message: 'Friends listed successfully',
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error fetching friends list',
+      });
+    }
+  }
+}
