@@ -23,7 +23,12 @@
     "scheme": "nearme",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.parasmani.nearme"
+      "bundleIdentifier": "com.parasmani.nearme",
+      "config": {
+        "googleSignIn": {
+          "reservedClientId": "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com"
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {

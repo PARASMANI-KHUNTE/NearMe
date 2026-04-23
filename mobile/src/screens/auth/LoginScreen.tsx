@@ -31,24 +31,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     console.log('Android Client ID:', process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID);
   }, []);
 
-  // Google OAuth setup 
+  // Google OAuth setup - use native flow for mobile
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID || '',
+    clientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID || '',
+    scopes: ['openid', 'email', 'profile'],
   });
 
+  // Handle OAuth response
   useEffect(() => {
-    if (response) {
-      console.log('--- OAuth Response ---');
-      console.log(JSON.stringify(response, null, 2));
-    }
-
     if (response?.type === 'success') {
-      const idToken = (response as any).authentication?.idToken;
+      const params = AuthSession.TokenResponse.fromURL(response.url);
+      const idToken = params.id_token;
 
       if (idToken) {
         handleGoogleLogin(idToken);
-      } else {
-        console.error('Login successful but no ID Token found in response');
       }
     }
   }, [response]);
@@ -72,7 +68,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleGooglePress = () => {
     clearError();
-    promptAsync({ useProxy: true });
+    // Use native browser, not proxy - for development and production
+    promptAsync({ useProxy: false });
   };
 
   return (

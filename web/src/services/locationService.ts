@@ -36,6 +36,16 @@ export const locationService = {
     
     return [];
   },
+
+  async getFriendsLocationStatus(): Promise<{ id: string; name: string; status: 'nearby' | 'offline' }[]> {
+    const response = await api.get<ApiResponse<{ id: string; name: string; status: 'nearby' | 'offline' }[]>>('/api/location/friends-status');
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    return [];
+  },
 };
 
 // Browser Geolocation helper

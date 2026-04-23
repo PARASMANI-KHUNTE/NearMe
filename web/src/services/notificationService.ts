@@ -13,7 +13,7 @@ export const notificationService = {
   },
 
   async markAsRead(notificationId: string): Promise<void> {
-    const response = await api.put<ApiResponse>(`/api/notifications/${notificationId}/read`);
+    const response = await api.patch<ApiResponse>(`/api/notifications/${notificationId}/read`);
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to mark as read');
@@ -21,7 +21,7 @@ export const notificationService = {
   },
 
   async markAllAsRead(): Promise<void> {
-    const response = await api.put<ApiResponse>('/api/notifications/read-all');
+    const response = await api.patch<ApiResponse>('/api/notifications/read-all');
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to mark all as read');

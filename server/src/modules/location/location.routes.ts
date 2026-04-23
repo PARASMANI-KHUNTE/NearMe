@@ -6,5 +6,6 @@ const router = Router();
 
 router.post('/update', requireAuth, LocationController.updateLocation);
 router.get('/nearby', requireAuth, LocationController.getNearbyUsers);
+router.get('/friends-status', requireAuth, LocationController.getFriendsLocationStatus);
 
 export default router;

@@ -43,20 +43,19 @@ export function useLocationTracker() {
       // Send to socket for real-time
       socketService.sendLocation(position.latitude, position.longitude, radius);
 
-      // Get nearby friends
-      const nearby = await locationService.getNearbyUsers({
-        latitude: position.latitude,
-        longitude: position.longitude,
-        radius,
-      });
+      // Fetch friends location status from server
+      const friendsStatus = await locationService.getFriendsLocationStatus();
 
       // Update friend store with nearby status
       const currentFriends = useFriendStore.getState().friends;
       setFriends(
-        currentFriends.map((friend) => ({
-          ...friend,
-          status: nearby.some((n) => n.id === friend.id) ? 'nearby' : 'offline',
-        }))
+        currentFriends.map((friend) => {
+          const friendStatus = friendsStatus.find(f => f.id === friend.id);
+          return {
+            ...friend,
+            status: friendStatus?.status || 'offline',
+          };
+        })
       );
 
       setState(prev => ({
