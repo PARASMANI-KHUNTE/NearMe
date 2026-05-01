@@ -218,9 +218,22 @@ app.use(
   }),
 );
 
-const allowedOrigin = process.env.CORS_ORIGIN;
+const corsOriginList = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:5173'];
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' ? allowedOrigin : 'http://localhost:5173',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || corsOriginList.includes('*')) {
+      callback(null, true);
+      return;
+    }
+    if (corsOriginList.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 };
 
