@@ -15,8 +15,13 @@ import notificationRoutes from './modules/notifications/notification.routes';
 const app: Express = express();
 
 // ─── Security Middlewares ──────────────────────────────────────────────────────
-app.use(helmet());
-
+// ─── Security Middlewares ──────────────────────────────────────────────────────
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 // CORS - configured for production
 const allowedOrigin = process.env.CORS_ORIGIN ;
 const corsOptions = {
