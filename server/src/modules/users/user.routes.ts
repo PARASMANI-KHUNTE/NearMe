@@ -20,6 +20,9 @@ const searchQuerySchema = z.object({
 // Retrieve profile
 router.get('/profile', requireAuth, UserController.getProfile);
 
+// Alias: /users/me → same as /users/profile (for mobile compatibility)
+router.get('/me', requireAuth, UserController.getProfile);
+
 // Update user settings
 router.patch('/settings', requireAuth, validateRequest(updateSettingsSchema, 'body'), UserController.updateSettings);
 

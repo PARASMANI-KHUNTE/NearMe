@@ -11,6 +11,7 @@ const router = Router();
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // only 5 attempts per 15 minutes
+  keyGenerator: req => req.headers['x-forwarded-for'] || req.ip || 'unknown',
   message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
