@@ -18,6 +18,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useLocationTracker } from '../hooks/useLocationTracker';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { AudioNotificationHandler } from '../components/AudioNotificationHandler';
+import { NearMeLogo } from '../components/branding/NearMeLogo';
 
 const navLinks = [
   { path: '/dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
@@ -89,7 +90,7 @@ function AppLayout() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-black tracking-tight text-primary">NearMe</h1>
+            <NearMeLogo size="sm" />
           </div>
           <ThemeToggle />
         </header>
@@ -120,12 +121,7 @@ function AppLayout() {
       >
         <div className="glass rounded-[2rem] h-full flex flex-col p-6 border-[var(--border)]">
           <div className="flex items-center justify-between mb-8 px-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <MapIcon className="text-white w-5 h-5" />
-              </div>
-              <h1 className="text-xl font-bold tracking-tight">NearMe</h1>
-            </div>
+            <NearMeLogo size="sm" />
             {isMobile && (
               <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-surface-hover">
                 <X className="w-5 h-5" />

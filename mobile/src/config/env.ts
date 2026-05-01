@@ -57,19 +57,19 @@ const getEnvConfig = (): EnvConfig => {
     };
   }
 
-  // 2. Prioritize manually configured serverIp from app.json
-  if (configuredHost) {
-    return {
-      API_BASE_URL: `http://${configuredHost}:3000/api`,
-      SOCKET_URL: `http://${configuredHost}:3000`,
-    };
-  }
-
-  // 3. Fallback to auto-detected host from Metro
+  // 2. Prefer the host Metro already reached. This avoids stale LAN IPs in local dev.
   if (autoDetectedHost) {
     return {
       API_BASE_URL: `http://${autoDetectedHost}:3000/api`,
       SOCKET_URL: `http://${autoDetectedHost}:3000`,
+    };
+  }
+
+  // 3. Fallback to app.config.js injected LAN IP for dev clients/standalone builds.
+  if (configuredHost) {
+    return {
+      API_BASE_URL: `http://${configuredHost}:3000/api`,
+      SOCKET_URL: `http://${configuredHost}:3000`,
     };
   }
 

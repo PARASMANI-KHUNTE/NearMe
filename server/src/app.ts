@@ -18,11 +18,15 @@ const app: Express = express();
 app.use(helmet());
 
 // CORS - configured for production
-const corsOptions = process.env.NODE_ENV === 'production' 
-  ? { origin: process.env.CORS_ORIGIN || false, credentials: true }
-  : { origin: '*', credentials: true };
-app.use(cors(corsOptions));
+const allowedOrigin = process.env.CORS_ORIGIN ;
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? allowedOrigin
+    : 'http://localhost:5173', // Replace with your local frontend port
+  credentials: true,
+};
 
+app.use(cors(corsOptions));
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

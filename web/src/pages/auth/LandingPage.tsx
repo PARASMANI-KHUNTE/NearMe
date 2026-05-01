@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Users, Bell, MapPin, ArrowRight, Zap } from 'lucide-react';
+import { Shield, Users, Bell, ArrowRight, Zap } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import heroBg from '../../assets/hero_bg.png';
+import { NearMeLogo } from '../../components/branding/NearMeLogo';
 
 export function LandingPage() {
   const { isAuthenticated } = useAuthStore();
@@ -41,12 +42,9 @@ export function LandingPage() {
           <motion.div 
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="flex items-center gap-2"
+            className="flex items-center"
           >
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary-glow">
-              <MapPin className="text-white w-6 h-6" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">NearMe</h1>
+            <NearMeLogo size="md" />
           </motion.div>
 
           <div className="flex items-center gap-6">

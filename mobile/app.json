@@ -42,7 +42,6 @@
       "expo-web-browser"
     ],
     "extra": {
-      "serverIp": "192.168.1.4",
       "eas": {
         "projectId": "39e48b99-60c0-4676-b094-68a2159c9460"
       }

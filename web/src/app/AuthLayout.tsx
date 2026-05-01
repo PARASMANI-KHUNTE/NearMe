@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
-import { MapPin } from 'lucide-react';
+import { NearMeLogo } from '../components/branding/NearMeLogo';
 
 function AuthLayout() {
   const navigate = useNavigate();
@@ -24,10 +24,7 @@ function AuthLayout() {
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => navigate('/landing')}
         >
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <MapPin className="text-white w-5 h-5" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight">NearMe</h1>
+          <NearMeLogo size="sm" />
         </div>
         <ThemeToggle />
       </header>
