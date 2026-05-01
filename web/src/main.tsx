@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import 'leaflet/dist/leaflet.css'
 import './styles/leaflet-theme.css'
-import { RouterProvider } from './app/providers'
+import App from './App'
 import { useThemeStore } from './store/themeStore'
 
 // Initialize theme before render
@@ -17,6 +17,6 @@ initTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider />
+    <App />
   </StrictMode>,
 )

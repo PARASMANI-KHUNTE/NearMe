@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 interface User {
@@ -23,12 +23,18 @@ interface Notification {
 
 type ThemeMode = 'day' | 'night';
 
+interface UserSettings {
+  radius?: number;
+  locationSharingEnabled?: boolean;
+  invisibleMode?: boolean;
+}
+
 interface AppState {
   user: User | null;
   token: string | null;
   friends: Friend[];
   notifications: Notification[];
-  radius: number; // in meters (500, 1000, 2000)
+  radius: number;
   shareLocation: boolean;
   invisibleMode: boolean;
   themeMode: ThemeMode;
@@ -42,32 +48,32 @@ interface AppState {
   setShareLocation: (share: boolean) => void;
   setInvisibleMode: (invisible: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  syncPreferences: (settings?: UserSettings | null) => void;
   toggleThemeMode: () => void;
   logout: () => void;
 }
 
-// Custom storage for SecureStore
-const secureStorage = {
+// Simple AsyncStorage wrapper
+const storage = {
   getItem: async (name: string) => {
-    if (Platform.OS === 'web') {
-      const value = localStorage.getItem(name);
-      return value ? JSON.parse(value) : null;
+    try {
+      return await AsyncStorage.getItem(name);
+    } catch {
+      return null;
     }
-    const value = await SecureStore.getItemAsync(name);
-    return value ? JSON.parse(value) : null;
   },
-  setItem: async (name: string, value: any) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(name, JSON.stringify(value));
-    } else {
-      await SecureStore.setItemAsync(name, JSON.stringify(value));
+  setItem: async (name: string, value: string) => {
+    try {
+      await AsyncStorage.setItem(name, value);
+    } catch (e) {
+      console.log('[Storage] setItem failed:', name);
     }
   },
   removeItem: async (name: string) => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(name);
-    } else {
-      await SecureStore.deleteItemAsync(name);
+    try {
+      await AsyncStorage.removeItem(name);
+    } catch {
+      console.log('[Storage] removeItem failed:', name);
     }
   },
 };
@@ -79,7 +85,7 @@ export const useAppStore = create<AppState>()(
       token: null,
       friends: [],
       notifications: [],
-      radius: 1000, // Default 1km
+      radius: 5000, // Default 5km
       shareLocation: true,
       invisibleMode: false,
       themeMode: 'night',
@@ -92,6 +98,11 @@ export const useAppStore = create<AppState>()(
       setShareLocation: (share) => set({ shareLocation: share }),
       setInvisibleMode: (invisible) => set({ invisibleMode: invisible }),
       setThemeMode: (mode) => set({ themeMode: mode }),
+      syncPreferences: (settings) => set((state) => ({
+        radius: settings?.radius ?? state.radius,
+        shareLocation: settings?.locationSharingEnabled ?? state.shareLocation,
+        invisibleMode: settings?.invisibleMode ?? state.invisibleMode,
+      })),
       toggleThemeMode: () => set((state) => ({
         themeMode: state.themeMode === 'night' ? 'day' : 'night',
       })),
@@ -99,7 +110,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'app-storage',
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => storage),
       // Persist all except friends and notifications (they can be loaded on demand)
       partialize: (state) => ({
         user: state.user,

@@ -13,9 +13,20 @@ export interface Friend {
   picture?: string;
 }
 
+export interface PendingRequest {
+  _id: string;
+  requesterId: {
+    _id: string;
+    name: string;
+    picture?: string;
+    uniqueId?: string;
+  };
+  status: 'pending';
+}
+
 export interface Notification {
   id: string;
-  type: 'proximity_alert' | 'friend_request';
+  type: 'proximity_alert' | 'friend_request' | 'friend_accepted' | 'meet_request';
   message: string;
   read: boolean;
   createdAt: string;
@@ -56,15 +67,17 @@ export interface LocationState {
   setShareLocation: (share: boolean) => void;
   setRadius: (radius: number) => void;
   setPreciseSharing: (precise: boolean) => void;
+  invisibleMode: boolean;
+  setInvisibleMode: (invisible: boolean) => void;
 }
 
 export interface FriendState {
   friends: Friend[];
-  requests: Friend[];
+  requests: PendingRequest[];
   setFriends: (friends: Friend[]) => void;
   addFriend: (friend: Friend) => void;
   removeFriend: (id: string) => void;
-  setRequests: (requests: Friend[]) => void;
+  setRequests: (requests: PendingRequest[]) => void;
 }
 
 export interface NotificationState {

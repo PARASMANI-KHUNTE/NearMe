@@ -25,11 +25,13 @@ export class UserController {
   static async updateSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user._id;
-      const { radius, locationSharingEnabled } = req.body;
+      const { radius, locationSharingEnabled, shareLocation, invisibleMode } = req.body;
 
       const updatedUser = await UserService.updateSettings(userId, {
         radius,
         locationSharingEnabled,
+        shareLocation,
+        invisibleMode,
       });
 
       res.status(200).json({

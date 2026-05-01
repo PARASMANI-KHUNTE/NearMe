@@ -4,6 +4,7 @@ import { User } from './authService';
 export interface UpdateSettingsRequest {
   radius?: number;
   locationSharingEnabled?: boolean;
+  invisibleMode?: boolean;
 }
 
 export class UserService {
@@ -36,6 +37,22 @@ export class UserService {
     } catch (error: any) {
       console.error('Update settings error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Update settings failed');
+    }
+  }
+
+  /**
+   * Search users by name or email
+   */
+  static async searchUsers(query: string): Promise<User[]> {
+    try {
+      const response = await api.get('/users/search', { params: { q: query } });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to search users');
+      }
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Search users error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Search users failed');
     }
   }
 }

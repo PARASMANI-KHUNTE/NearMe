@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import React from 'react';
+import { Alert, Text, TouchableOpacity } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/authStore';
 import type { LoginScreenProps } from '../../navigation/types';
@@ -24,24 +25,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   });
 
   // Google OAuth setup
-  // Debug environment variables
-  useEffect(() => {
-    console.log('--- Auth Config Diagnostics ---');
-    console.log('Web Client ID:', process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID);
-    console.log('Android Client ID:', process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID);
-  }, []);
+  const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
-  // Google OAuth setup - use native flow for mobile
+  const redirectUri = isExpoGo
+    ? 'https://auth.expo.io/@parasmani/nearme'
+    : AuthSession.makeRedirectUri({
+        native: 'nearme:/oauth2redirect',
+      });
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID || '',
-    scopes: ['openid', 'email', 'profile'],
-  });
+    clientId: process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID || '',
+    androidClientId: process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
+    redirectUri,
+  } as any);
 
   // Handle OAuth response
-  useEffect(() => {
+  React.useEffect(() => {
     if (response?.type === 'success') {
-      const params = AuthSession.TokenResponse.fromURL(response.url);
-      const idToken = params.id_token;
+      const params = (response as any).params;
+      const idToken = params?.id_token;
 
       if (idToken) {
         handleGoogleLogin(idToken);
@@ -52,24 +55,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleGoogleLogin = async (idToken: string) => {
     try {
       await login(idToken);
-      // Navigation will be handled by auth state change
     } catch (err) {
-      Alert.alert('Login Failed', 'Google authentication failed. Please try again.');
-    }
-  };
-
-  const onSubmit = async (data: LoginSchema) => {
-    try {
-      await loginWithEmail(data.email, data.password);
-    } catch (err) {
-      console.error('Email login error:', err);
+      // Error handled by store
     }
   };
 
   const handleGooglePress = () => {
     clearError();
-    // Use native browser, not proxy - for development and production
-    promptAsync({ useProxy: false });
+    promptAsync({ showTitle: true });
+  };
+
+  const onSubmit = async (data: LoginSchema) => {
+    try {
+      await loginWithEmail(data.email, data.password);
+    } catch (err: any) {
+      console.error('Email login error:', err);
+    }
   };
 
   return (
@@ -91,7 +92,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
             label="Email"
-            placeholder="Enter your email"
+            placeholder="you@example.com"
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
@@ -101,14 +102,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           />
         )}
       />
-      
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
             label="Password"
-            placeholder="Enter your password"
+            placeholder="Enter password"
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
@@ -117,6 +117,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           />
         )}
       />
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ForgotPassword')}
+        style={{ alignSelf: 'flex-end', marginTop: 8 }}
+      >
+        <Text style={{ color: '#38bdf8', fontWeight: '500' }}>Forgot Password?</Text>
+      </TouchableOpacity>
     </AuthLayout>
   );
 };

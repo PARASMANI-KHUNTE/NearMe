@@ -3,8 +3,24 @@ import { env } from '../config/env';
 // Google Auth Service for Web
 declare global {
   interface Window {
-    google: any;
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+          renderButton: (
+            element: HTMLElement,
+            options: { theme: string; size: string; text: string; shape: string; width: number }
+          ) => void;
+          prompt: () => void;
+        };
+      };
+    };
+    handleGoogleCredential?: (idToken: string) => Promise<void>;
   }
+}
+
+interface GoogleCredentialResponse {
+  credential?: string;
 }
 
 export class GoogleAuthService {
@@ -19,7 +35,12 @@ export class GoogleAuthService {
 
       const initialize = () => {
         try {
-          window.google.accounts.id.initialize({
+          const googleId = window.google?.accounts?.id;
+          if (!googleId) {
+            throw new Error('Google Identity Services script did not load');
+          }
+
+          googleId.initialize({
             client_id: this.clientId,
             callback: this.handleCredentialResponse.bind(this),
           });
@@ -53,12 +74,11 @@ export class GoogleAuthService {
     });
   }
 
-  static async handleCredentialResponse(response: any) {
+  static async handleCredentialResponse(response: GoogleCredentialResponse) {
     try {
       const idToken = response.credential;
-      // Call the global handler if set
-      if ((window as any).handleGoogleCredential) {
-        await (window as any).handleGoogleCredential(idToken);
+      if (idToken && window.handleGoogleCredential) {
+        await window.handleGoogleCredential(idToken);
       }
     } catch (error) {
       console.error('Google auth error:', error);

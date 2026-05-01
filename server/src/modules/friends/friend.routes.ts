@@ -10,6 +10,7 @@ router.post('/request', FriendController.sendRequest);
 router.get('/requests', FriendController.listPendingRequests);
 router.post('/request/:requestId/accept', FriendController.acceptRequest);
 router.post('/request/:requestId/reject', FriendController.rejectRequest);
+router.delete('/:friendId', FriendController.removeFriend);
 router.get('/', FriendController.listFriends);
 
 export default router;

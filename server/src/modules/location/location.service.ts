@@ -17,14 +17,19 @@ export class LocationService {
     const redis = getRedis();
     const cacheKey = `location:last:${userId}`;
 
-    // 1. Load cached last position from Redis
-    const cached = await redis.get(cacheKey);
+    let cached: string | null = null;
+    try {
+      cached = await redis.get(cacheKey);
+    } catch (err) {
+      logger.warn({ err, userId }, 'Location cache read failed');
+    }
+
     if (cached) {
       const lastLoc: [number, number] = JSON.parse(cached);
       const distanceMoved = ProximityService.calculateApproxDistance(lastLoc, coordinates);
 
       if (distanceMoved < MOVEMENT_THRESHOLD_METERS) {
-        logger.debug({ userId, distanceMoved }, 'Location update skipped — movement below threshold');
+        logger.debug({ userId, distanceMoved }, 'Location update skipped - movement below threshold');
         return null;
       }
     }
@@ -34,11 +39,14 @@ export class LocationService {
     const locationRecord = await Location.findOneAndUpdate(
       { userId },
       { userId, location: { type: 'Point', coordinates }, expiresAt },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
-    // 3. Update Redis cache with new position
-    await redis.set(cacheKey, JSON.stringify(coordinates), { EX: LOCATION_CACHE_TTL });
+    try {
+      await redis.set(cacheKey, JSON.stringify(coordinates), { EX: LOCATION_CACHE_TTL });
+    } catch (err) {
+      logger.warn({ err, userId }, 'Location cache write failed');
+    }
 
     logger.info({ userId, coordinates }, 'Location updated');
 
@@ -51,9 +59,10 @@ export class LocationService {
   }
 
   /**
-   * Finding nearby users within a radius (meters)
+   * Finding nearby friends within a radius (meters)
+   * Only returns users who are friends with the requesting user
    */
-  static async getNearbyUsers(coordinates: [number, number], radiusMeters: number): Promise<ILocation[]> {
+  static async getNearbyFriends(coordinates: [number, number], radiusMeters: number, friendIds: string[]): Promise<ILocation[]> {
     return Location.find({
       location: {
         $near: {
@@ -63,6 +72,14 @@ export class LocationService {
           },
           $maxDistance: radiusMeters,
         },
+      },
+      userId: { $in: friendIds },
+    }).populate({
+      path: 'userId',
+      select: 'name picture settings',
+      match: {
+        'settings.locationSharingEnabled': true,
+        'settings.invisibleMode': { $ne: true },
       },
     });
   }

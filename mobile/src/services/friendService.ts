@@ -1,13 +1,28 @@
 import { api } from './api';
 import { User } from './authService';
 
+export interface FriendRequestUser {
+  id?: string;
+  _id?: string;
+  name: string;
+  picture?: string;
+  uniqueId?: string;
+}
+
 export interface FriendRequest {
   _id: string;
-  requesterId: string;
-  recipientId: string;
+  requesterId: string | FriendRequestUser;
+  recipientId: string | FriendRequestUser;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FriendStatus {
+  id: string;
+  name: string;
+  picture?: string;
+  status: 'nearby' | 'offline';
 }
 
 export class FriendService {
@@ -72,6 +87,35 @@ export class FriendService {
     } catch (error: any) {
       console.error('Get friends error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get friends failed');
+    }
+  }
+
+  /**
+   * Get pending (incoming) friend requests
+   */
+  static async getPendingRequests(): Promise<FriendRequest[]> {
+    try {
+      const response = await api.get('/friends/requests');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to get pending requests');
+      }
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get pending requests error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Get pending requests failed');
+    }
+  }
+
+  static async getFriendsStatuses(): Promise<FriendStatus[]> {
+    try {
+      const response = await api.get('/location/friends-status');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to get friends statuses');
+      }
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get friends statuses error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Get friends statuses failed');
     }
   }
 }

@@ -12,7 +12,7 @@ import { api } from '../../services/api';
 export function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { shareLocation, radius, setShareLocation, setRadius } = useLocationStore();
+  const { shareLocation, radius, invisibleMode, setShareLocation, setRadius, setInvisibleMode } = useLocationStore();
   const [uniqueId, setUniqueId] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
 
@@ -98,6 +98,15 @@ export function ProfilePage() {
             </div>
           </Card>
 
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={handleShare}
+            disabled={!uniqueId}
+          >
+            Share NearMe ID
+          </Button>
+
           <Button 
             variant="glass" 
             className="w-full text-error hover:bg-error/10"
@@ -123,6 +132,13 @@ export function ProfilePage() {
                 onChange={setShareLocation}
               />
 
+              <Toggle
+                label="Invisible Mode"
+                description="Hide your presence completely while still tracking others"
+                checked={invisibleMode}
+                onChange={setInvisibleMode}
+              />
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[var(--text)] font-medium">Detection Radius</p>
@@ -132,18 +148,18 @@ export function ProfilePage() {
                 </div>
                 <input
                   type="range"
-                  min="100"
+                  min="1"
                   max="5000"
-                  step="100"
+                  step="1"
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer"
                   style={{
-                    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${((radius - 100) / 4900) * 100}%, var(--surface) ${((radius - 100) / 4900) * 100}%, var(--surface) 100%)`
+                    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${((radius - 1) / 4999) * 100}%, var(--surface) ${((radius - 1) / 4999) * 100}%, var(--surface) 100%)`
                   }}
                 />
                 <div className="flex justify-between text-xs text-[var(--text-muted)]">
-                  <span>100m</span>
+                  <span>1m</span>
                   <span>5km</span>
                 </div>
               </div>

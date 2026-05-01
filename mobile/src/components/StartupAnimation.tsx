@@ -65,8 +65,9 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({ onFinish }) => {
 
     // Hard fallback: never allow startup screen to block app boot.
     const hardFallbackTimer = setTimeout(() => {
+      console.log('[Startup] Hard fallback triggered');
       finishSafely();
-    }, 3000);
+    }, 2000);
 
     return () => {
       clearTimeout(finishTimer);

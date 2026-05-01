@@ -1,13 +1,27 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { env } from '../config/env';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
 const TOKEN_KEY = 'auth_token';
+const OFFLINE_QUEUE_KEY = 'offline_queue';
+
+interface QueuedRequest {
+  id: string;
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  url: string;
+  data?: any;
+  config?: any;
+  timestamp: number;
+}
 
 class ApiService {
   private api: AxiosInstance;
   private retryDelay = 1000; // Start with 1 second
   private maxRetries = 3;
+  private isOnline = true;
+  private offlineQueue: QueuedRequest[] = [];
+  private isProcessingQueue = false;
 
   constructor() {
     this.api = axios.create({
@@ -19,6 +33,8 @@ class ApiService {
     });
 
     this.setupInterceptors();
+    this.setupNetworkListener();
+    this.loadOfflineQueue();
   }
 
   private async setupInterceptors() {
@@ -26,7 +42,7 @@ class ApiService {
     this.api.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
         try {
-          const token = await SecureStore.getItemAsync(TOKEN_KEY);
+          const token = await AsyncStorage.getItem(TOKEN_KEY);
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
           }
@@ -47,9 +63,14 @@ class ApiService {
         // Handle 401 errors
         if (error.response?.status === 401) {
           // Token expired or invalid
-          await SecureStore.deleteItemAsync(TOKEN_KEY);
-          // TODO: Trigger logout in auth store
-          console.log('Token expired, cleared from storage');
+          await AsyncStorage.removeItem(TOKEN_KEY);
+          await AsyncStorage.removeItem('auth_user');
+          try {
+            const { useAuthStore } = await import('../store/authStore');
+            await useAuthStore.getState().logout();
+          } catch (logoutError) {
+            console.error('Failed to clear auth state after 401:', logoutError);
+          }
           return Promise.reject(error);
         }
 
@@ -70,12 +91,30 @@ class ApiService {
           );
         }
 
+        // Handle offline scenario
+        if (!this.isOnline && this.canQueueRequest(config)) {
+          console.log('Device offline, queuing request');
+          await this.queueRequest(config);
+          return Promise.reject(new Error('Device offline - request queued'));
+        }
+
         // Global error handling
         this.handleGlobalError(error);
 
         return Promise.reject(error);
       }
     );
+  }
+
+  private setupNetworkListener() {
+    NetInfo.addEventListener(state => {
+      this.isOnline = state.isConnected ?? false;
+      console.log('Network status changed:', this.isOnline ? 'online' : 'offline');
+
+      if (this.isOnline && this.offlineQueue.length > 0) {
+        this.processOfflineQueue();
+      }
+    });
   }
 
   private shouldRetry(error: any): boolean {
@@ -85,6 +124,88 @@ class ApiService {
       error.code === 'ECONNABORTED' || // Timeout
       (error.response.status >= 500 && error.response.status < 600) // 5xx
     );
+  }
+
+  private canQueueRequest(config: InternalAxiosRequestConfig): boolean {
+    // Only queue POST, PATCH, DELETE requests (not GET)
+    const method = config.method?.toUpperCase();
+    return method === 'POST' || method === 'PATCH' || method === 'DELETE';
+  }
+
+  private async queueRequest(config: InternalAxiosRequestConfig): Promise<void> {
+    const queuedRequest: QueuedRequest = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      method: config.method?.toUpperCase() as any,
+      url: config.url || '',
+      data: config.data,
+      config: {
+        headers: config.headers,
+        params: config.params,
+      },
+      timestamp: Date.now(),
+    };
+
+    this.offlineQueue.push(queuedRequest);
+    await this.saveOfflineQueue();
+  }
+
+  private async processOfflineQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.offlineQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    console.log(`Processing ${this.offlineQueue.length} queued requests`);
+
+    const failedRequests: QueuedRequest[] = [];
+
+    for (const request of this.offlineQueue) {
+      try {
+        await this.executeRequest(request);
+      } catch (error) {
+        console.error('Failed to process queued request:', request.id, error);
+        failedRequests.push(request);
+      }
+    }
+
+    this.offlineQueue = failedRequests;
+    await this.saveOfflineQueue();
+    this.isProcessingQueue = false;
+
+    console.log(`Queue processing complete. ${failedRequests.length} requests remain queued`);
+  }
+
+  private async executeRequest(request: QueuedRequest): Promise<any> {
+    switch (request.method) {
+      case 'POST':
+        return this.api.post(request.url, request.data, request.config);
+      case 'PATCH':
+        return this.api.patch(request.url, request.data, request.config);
+      case 'DELETE':
+        return this.api.delete(request.url, request.config);
+      default:
+        throw new Error(`Unsupported method: ${request.method}`);
+    }
+  }
+
+  private async saveOfflineQueue(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(this.offlineQueue));
+    } catch (error) {
+      console.error('Failed to save offline queue:', error);
+    }
+  }
+
+  private async loadOfflineQueue(): Promise<void> {
+    try {
+      const queueData = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+      if (queueData) {
+        this.offlineQueue = JSON.parse(queueData);
+        console.log(`Loaded ${this.offlineQueue.length} queued requests`);
+      }
+    } catch (error) {
+      console.error('Failed to load offline queue:', error);
+    }
   }
 
   private handleGlobalError(error: any): void {
@@ -126,6 +247,36 @@ class ApiService {
   async delete<T = any>(url: string, config?: any): Promise<AxiosResponse<T>> {
     return this.api.delete(url, config);
   }
+
+  // Get queue status
+  getQueueStatus(): { length: number; isProcessing: boolean } {
+    return {
+      length: this.offlineQueue.length,
+      isProcessing: this.isProcessingQueue,
+    };
+  }
+
+  // Clear offline queue
+  async clearQueue(): Promise<void> {
+    this.offlineQueue = [];
+    await this.saveOfflineQueue();
+  }
 }
 
-export const api = new ApiService().instance;
+// Create a proxy to lazy-initialize the ApiService on first use
+let apiInstance: AxiosInstance | null = null;
+
+export const api = new Proxy({} as AxiosInstance, {
+  get: (target, prop) => {
+    if (!apiInstance) {
+      apiInstance = new ApiService().instance;
+    }
+    return (apiInstance as any)[prop];
+  },
+  apply: (target, thisArg, argumentsList) => {
+    if (!apiInstance) {
+      apiInstance = new ApiService().instance;
+    }
+    return (apiInstance as any)(...argumentsList);
+  }
+});

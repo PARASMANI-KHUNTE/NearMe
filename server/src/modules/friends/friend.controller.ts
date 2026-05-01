@@ -20,16 +20,22 @@ export class FriendController {
 
       // Get requester info for notification
       const requester = await User.findById(requesterId).select('name picture');
+      const from = {
+        id: requesterId,
+        name: requester?.name || 'Someone',
+        picture: requester?.picture,
+      };
 
-      // Send notification to recipient via socket
-      emitToUser(recipientId, 'friend_request', {
-        id: request._id.toString(),
-        from: {
-          id: requesterId,
-          name: requester?.name || 'Someone',
-          picture: requester?.picture,
+      await NotificationService.createAndEmit(
+        recipientId,
+        'friend_request',
+        `${from.name} sent you a friend request`,
+        {
+          requestId: request._id.toString(),
+          from,
         },
-      });
+        requesterId
+      );
 
       res.status(201).json({
         success: true,
@@ -111,6 +117,25 @@ export class FriendController {
       res.status(500).json({
         success: false,
         message: error.message || 'Error fetching friends list',
+      });
+    }
+  }
+
+  static async removeFriend(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user._id.toString();
+      const friendId = req.params.friendId as string;
+
+      await FriendService.removeFriend(userId, friendId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Friend removed successfully',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error removing friend',
       });
     }
   }

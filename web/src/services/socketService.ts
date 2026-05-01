@@ -5,6 +5,15 @@ import { useNotificationStore } from '../store/notificationStore';
 import { useFriendStore } from '../store/friendStore';
 
 type SocketCallback = (data: unknown) => void;
+type FriendRequestSocketPayload = {
+  id?: string;
+  _id?: string;
+  from?: { id?: string; _id?: string; name?: string; picture?: string };
+  metadata?: {
+    requestId?: string;
+    from?: { id?: string; _id?: string; name?: string; picture?: string };
+  };
+};
 
 let socket: Socket | null = null;
 const eventListeners = new Map<string, Set<SocketCallback>>();
@@ -37,39 +46,50 @@ export const socketService = {
 
     // Real-time events
     socket.on('proximity_alert', (data: { 
-      id: string; 
+      id?: string;
+      _id?: string;
       friendId: string; 
-      friendName: string; 
-      message: string;
+      friendName?: string; 
+      message?: string;
+      content?: string;
       distance?: number;
+      createdAt?: string;
     }) => {
       console.log('Proximity alert:', data);
       
       useNotificationStore.getState().addNotification({
-        id: data.id,
+        id: data.id || data._id || `proximity-${Date.now()}`,
         type: 'proximity_alert',
-        message: `${data.friendName} is nearby! ${data.message || ''}`,
+        message: data.content || data.message || `${data.friendName || 'A friend'} is nearby`,
         read: false,
-        createdAt: new Date().toISOString(),
+        createdAt: data.createdAt || new Date().toISOString(),
       });
       
       // Notify listeners
       this.emitLocal('proximity_alert', data);
     });
 
-    socket.on('friend_request', (data: { 
-      id: string; 
-      from: { id: string; name: string; picture?: string };
-    }) => {
+    socket.on('friend_request', (data: FriendRequestSocketPayload) => {
       console.log('Friend request received:', data);
+      const from = data.from || data.metadata?.from;
+      const requesterId = from?.id || from?._id;
+      const requestId = data.id || data.metadata?.requestId || data._id;
+
+      if (!requestId || !requesterId || !from?.name) {
+        this.emitLocal('friend_request', data);
+        return;
+      }
       
       useFriendStore.getState().setRequests([
         ...useFriendStore.getState().requests,
         { 
-          id: data.from.id, 
-          name: data.from.name, 
-          picture: data.from.picture, 
-          status: 'offline' as const 
+          _id: requestId,
+          requesterId: {
+            _id: requesterId,
+            name: from.name,
+            picture: from.picture,
+          },
+          status: 'pending',
         },
       ]);
       

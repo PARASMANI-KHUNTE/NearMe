@@ -29,8 +29,8 @@ export const friendService = {
     return [];
   },
 
-  async sendRequest(userId: string): Promise<void> {
-    const response = await api.post<ApiResponse>(`/api/friends/request`, { userId });
+  async sendRequest(recipientId: string): Promise<void> {
+    const response = await api.post<ApiResponse>(`/api/friends/request`, { recipientId });
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to send request');
@@ -62,7 +62,7 @@ export const friendService = {
   },
 
   async searchUsers(query: string): Promise<User[]> {
-    const response = await api.get<ApiResponse<User[]>>('/api/friends/search', {
+    const response = await api.get<ApiResponse<User[]>>('/api/users/search', {
       params: { q: query },
     });
     

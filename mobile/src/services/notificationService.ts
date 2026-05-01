@@ -1,6 +1,6 @@
 import { api } from './api';
 
-export type NotificationType = 'friend_request' | 'proximity_alert' | 'meet_request';
+export type NotificationType = 'friend_request' | 'friend_accepted' | 'proximity_alert' | 'meet_request';
 
 export interface Notification {
   _id: string;
@@ -8,17 +8,14 @@ export interface Notification {
   senderId?: string;
   type: NotificationType;
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   read: boolean;
   createdAt: string;
 }
 
-// Note: Backend may not have GET /notifications endpoint yet
-// This assumes it exists for fetching notification history
 export class NotificationService {
   /**
    * Get user's notifications
-   * Note: This assumes backend has GET /notifications endpoint
    */
   static async getNotifications(): Promise<Notification[]> {
     try {
@@ -30,6 +27,36 @@ export class NotificationService {
     } catch (error: any) {
       console.error('Get notifications error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get notifications failed');
+    }
+  }
+
+  /**
+   * Mark a single notification as read
+   */
+  static async markAsRead(notificationId: string): Promise<void> {
+    try {
+      const response = await api.patch(`/notifications/${notificationId}/read`);
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to mark as read');
+      }
+    } catch (error: any) {
+      console.error('Mark as read error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Mark as read failed');
+    }
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  static async markAllAsRead(): Promise<void> {
+    try {
+      const response = await api.patch('/notifications/read-all');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to mark all as read');
+      }
+    } catch (error: any) {
+      console.error('Mark all as read error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Mark all as read failed');
     }
   }
 }

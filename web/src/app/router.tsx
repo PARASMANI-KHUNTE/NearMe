@@ -6,6 +6,7 @@ import { SplashScreen } from '../pages/auth/SplashScreen';
 import { LandingPage } from '../pages/auth/LandingPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SignupPage } from '../pages/auth/SignupPage';
+import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { FriendsPage } from '../pages/friends/FriendsPage';
 import { NotificationsPage } from '../pages/notifications/NotificationsPage';
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
       {
         path: '/signup',
         element: <SignupPage />,
+      },
+      {
+        path: '/forgot-password',
+        element: <ForgotPasswordPage />,
       },
     ],
   },

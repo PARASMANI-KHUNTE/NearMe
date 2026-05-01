@@ -1,8 +1,11 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
 import { logger } from './shared/logger/logger';
 import { setupSwagger } from './docs/swagger';
+import { errorHandler, notFoundHandler } from './shared/middlewares/errorHandler';
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import friendRoutes from './modules/friends/friend.routes';
@@ -11,11 +14,40 @@ import notificationRoutes from './modules/notifications/notification.routes';
 
 const app: Express = express();
 
+// ─── Security Middlewares ──────────────────────────────────────────────────────
+app.use(helmet());
+
+// CORS - configured for production
+const corsOptions = process.env.NODE_ENV === 'production' 
+  ? { origin: process.env.CORS_ORIGIN || false, credentials: true }
+  : { origin: '*', credentials: true };
+app.use(cors(corsOptions));
+
+// ─── Rate Limiting ───────────────────────────────────────────────────────────
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { success: false, message: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // strict limit for auth endpoints
+  message: { success: false, message: 'Too many authentication attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
 // ─── Logging Middleware ──────────────────────────────────────────────────────
 app.use(
   pinoHttp({
     logger,
-    // Only log the fields we care about — suppress full req/res dumps
     customSuccessMessage: (req, res) =>
       `${req.method} ${req.url} ${res.statusCode}`,
     customErrorMessage: (req, res, err) =>
@@ -32,15 +64,13 @@ app.use(
         return { statusCode: res.statusCode };
       },
     },
-    // Suppress health-check noise
     autoLogging: {
       ignore: (req) => req.url === '/health',
     },
   })
 );
 
-// ─── Core Middlewares ────────────────────────────────────────────────────────
-app.use(cors());
+// ─── Body Parsing ──────────────────────────────────────────────────────────────
 app.use(express.json());
 
 // ─── API Docs ────────────────────────────────────────────────────────────────
@@ -58,13 +88,10 @@ app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ success: true, message: 'Server is healthy' });
 });
 
-// ─── Global Error Handler ────────────────────────────────────────────────────
-app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  logger.error({ err, url: req.url, method: req.method }, err.message);
-  res.status(500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-  });
-});
+// ─── 404 Handler ───────────────────────────────────────────────────────────────
+app.use(notFoundHandler);
+
+// ─── Global Error Handler ────────────────────────────────────────────────────────
+app.use(errorHandler);
 
 export default app;

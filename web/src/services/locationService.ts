@@ -9,7 +9,11 @@ interface LocationData {
 interface NearbyUser {
   id: string;
   name: string;
+  latitude?: number;
+  longitude?: number;
   distance?: number;
+  approximate?: boolean;
+  precisionMeters?: number;
 }
 
 export const locationService = {

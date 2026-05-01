@@ -1,3 +1,4 @@
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -19,7 +20,8 @@ import { useFriendStore } from '../../store/friendStore';
 import { useLocationTracker } from '../../hooks/useLocationTracker';
 
 export function DashboardPage() {
-  const { shareLocation, radius, preciseSharing, setShareLocation, setRadius, setPreciseSharing } = useLocationStore();
+  const navigate = useNavigate();
+  const { shareLocation, radius, preciseSharing, invisibleMode, setShareLocation, setRadius, setPreciseSharing, setInvisibleMode } = useLocationStore();
   const { friends } = useFriendStore();
   const { loading, error, isTracking, lastUpdate, refresh } = useLocationTracker();
 
@@ -121,15 +123,15 @@ export function DashboardPage() {
                 
                 <input
                   type="range"
-                  min="100"
+                  min="1"
                   max="5000"
-                  step="100"
+                  step="1"
                   value={radius}
-onChange={(e) => setRadius(Number(e.target.value))}
+                  onChange={(e) => setRadius(Number(e.target.value))}
                   className="w-full h-3 bg-[var(--surface-hover)] rounded-full appearance-none cursor-pointer accent-primary"
                 />
                 <div className="flex justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                  <span>100m</span>
+                  <span>1m</span>
                   <span>5km</span>
                 </div>
               </div>
@@ -140,6 +142,13 @@ onChange={(e) => setRadius(Number(e.target.value))}
                 checked={preciseSharing}
                 onChange={setPreciseSharing}
                 disabled={!shareLocation}
+              />
+
+              <Toggle
+                label="Invisible Mode"
+                description="Hide your presence completely while still tracking others."
+                checked={invisibleMode}
+                onChange={setInvisibleMode}
               />
             </div>
           </Card>
@@ -184,7 +193,7 @@ onChange={(e) => setRadius(Number(e.target.value))}
                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-tighter">Nearby</p>
                       </div>
                     </div>
-                    <Button variant="glass" size="sm" className="rounded-xl w-10 h-10 p-0">
+                    <Button variant="glass" size="sm" className="rounded-xl w-10 h-10 p-0" onClick={() => navigate('/map')}>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </motion.div>
@@ -195,11 +204,11 @@ onChange={(e) => setRadius(Number(e.target.value))}
             <div className="mt-8 pt-8 border-t border-[var(--border)]">
               <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text-muted)] mb-4">Quick Actions</h3>
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="secondary" className="rounded-2xl py-6 flex flex-col gap-2">
+                <Button variant="secondary" className="rounded-2xl py-6 flex flex-col gap-2" onClick={() => navigate('/friends')}>
                   <UserPlus className="w-5 h-5" />
                   <span className="text-xs">Invite</span>
                 </Button>
-                <Button variant="secondary" className="rounded-2xl py-6 flex flex-col gap-2">
+                <Button variant="secondary" className="rounded-2xl py-6 flex flex-col gap-2" onClick={refresh} isLoading={loading}>
                   <Send className="w-5 h-5" />
                   <span className="text-xs">Broadcast</span>
                 </Button>
@@ -210,11 +219,5 @@ onChange={(e) => setRadius(Number(e.target.value))}
 
       </div>
     </div>
-  );
-}
-
-function Link({ to, children, className }: { to: string, children: React.ReactNode, className?: string }) {
-  return (
-    <a href={to} className={className}>{children}</a>
   );
 }

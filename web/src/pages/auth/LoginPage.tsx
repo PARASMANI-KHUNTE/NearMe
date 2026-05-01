@@ -34,16 +34,16 @@ export function LoginPage() {
   useEffect(() => {
     let isMounted = true;
 
-    (window as any).handleGoogleCredential = async (idToken: string) => {
+    window.handleGoogleCredential = async (idToken: string) => {
       try {
         setIsLoading(true);
         setGoogleInitError(null);
 
         await authService.loginWithGoogle(idToken);
         navigate('/dashboard');
-      } catch (error: any) {
+      } catch (error: unknown) {
         const message =
-          (typeof error?.message === 'string' && error.message) ||
+          (error instanceof Error && error.message) ||
           'Google login failed';
         setError('root', { message });
       } finally {
@@ -54,7 +54,7 @@ export function LoginPage() {
     if (!env.googleClientId) {
       setGoogleInitError('Missing VITE_GOOGLE_CLIENT_ID for web OAuth');
       return () => {
-        delete (window as any).handleGoogleCredential;
+        delete window.handleGoogleCredential;
       };
     }
 
@@ -73,16 +73,17 @@ export function LoginPage() {
 
     return () => {
       isMounted = false;
-      delete (window as any).handleGoogleCredential;
+      delete window.handleGoogleCredential;
     };
   }, [navigate, setError]);
 
-  const onSubmit = async (_data: LoginForm) => {
+  const onSubmit = async (data: LoginForm) => {
     try {
       setIsLoading(true);
+      await authService.login(data);
       navigate('/dashboard');
-    } catch (error: any) {
-      setError('root', { message: error.message || 'Login failed' });
+    } catch (error: unknown) {
+      setError('root', { message: error instanceof Error ? error.message : 'Login failed' });
     } finally {
       setIsLoading(false);
     }
@@ -149,6 +150,12 @@ export function LoginPage() {
           Sign In
         </Button>
       </form>
+
+      <p className="mt-4 text-center text-sm">
+        <Link to="/forgot-password" className="text-[var(--text-muted)] hover:text-[var(--primary)]">
+          Forgot password?
+        </Link>
+      </p>
 
       <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
         Don&apos;t have an account?{' '}

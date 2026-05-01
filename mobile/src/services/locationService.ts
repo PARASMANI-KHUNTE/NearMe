@@ -17,6 +17,11 @@ export class LocationService {
   private static locationSubscription: Location.LocationSubscription | null = null;
   private static updateInterval: number = 60000; // 60 seconds default
 
+  static async getForegroundPermissionStatus(): Promise<Location.PermissionStatus> {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    return status;
+  }
+
   /**
    * Request location permissions
    */

@@ -14,8 +14,8 @@ export class ProximityService {
    */
   static async handleLocationUpdate(userId: string, coordinates: [number, number]): Promise<void> {
     const user = await User.findById(userId).select('settings');
-    if (!user || !user.settings?.locationSharingEnabled) {
-      logger.debug({ userId }, 'Proximity skipped — location sharing disabled');
+    if (!user || !user.settings?.locationSharingEnabled || user.settings?.invisibleMode) {
+      logger.debug({ userId }, 'Proximity skipped - sharing disabled or invisible mode on');
       return;
     }
 
@@ -23,10 +23,14 @@ export class ProximityService {
     const friends = await FriendService.listFriends(userId);
     if (friends.length === 0) return;
 
-    const friendIds = friends.map((f) => f._id.toString());
-    const friendsMap = new Map(friends.map((f) => [f._id.toString(), f]));
+    const visibleFriends = friends.filter(
+      (friend) => friend.settings?.locationSharingEnabled && !friend.settings?.invisibleMode
+    );
+    if (visibleFriends.length === 0) return;
 
-    // Query nearby friend locations using $near
+    const friendIds = visibleFriends.map((friend) => friend._id.toString());
+    const friendsMap = new Map(visibleFriends.map((friend) => [friend._id.toString(), friend]));
+
     const nearbyLocations = await Location.find({
       userId: { $in: friendIds },
       location: {
@@ -40,7 +44,7 @@ export class ProximityService {
     for (const loc of nearbyLocations) {
       const friendId = loc.userId.toString();
       const friend = friendsMap.get(friendId);
-      if (!friend || !friend.settings?.locationSharingEnabled) continue;
+      if (!friend) continue;
 
       const friendRadius = friend.settings?.radius || 5000;
       const distance = ProximityService.calculateApproxDistance(
@@ -56,21 +60,20 @@ export class ProximityService {
 
   static async triggerProximityAlert(userA: string, userB: string, distance: number): Promise<void> {
     const redis = getRedis();
-    // Deterministic key — same regardless of who triggered who
+    // Deterministic key, same regardless of who triggered who.
     const cooldownKey = `proximity:cooldown:${[userA, userB].sort().join('_')}`;
 
-    // Atomic SET NX EX — only sets if key does NOT exist (cooldown not active)
+    // Atomic SET NX EX only sets if key does not exist.
     const acquired = await redis.set(cooldownKey, '1', {
       EX: NOTIFICATION_COOLDOWN_SECONDS,
       NX: true,
     });
 
     if (!acquired) {
-      logger.debug({ userA, userB }, 'Proximity alert skipped — cooldown active');
+      logger.debug({ userA, userB }, 'Proximity alert skipped - cooldown active');
       return;
     }
 
-    // Round to nearest 100m for privacy
     const approxDistance = Math.round(distance / 100) * 100;
 
     logger.info({ userA, userB, approxDistance }, 'Proximity alert triggered');
@@ -94,19 +97,19 @@ export class ProximityService {
   }
 
   /**
-   * Haversine formula — approximate distance between two [lng, lat] points in meters.
+   * Haversine formula for approximate distance between two [lng, lat] points in meters.
    */
   static calculateApproxDistance(coords1: [number, number], coords2: [number, number]): number {
     const R = 6371e3;
     const [lon1, lat1] = coords1;
     const [lon2, lat2] = coords2;
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
     const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+      Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Math.round(R * c);
   }

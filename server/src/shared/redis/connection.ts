@@ -1,10 +1,11 @@
 import { createClient, RedisClientType } from 'redis';
 import { logger } from '../logger/logger';
+import { getRedisUri } from '../config';
 
 let redisClient: RedisClientType;
 
 export const connectRedis = async (): Promise<void> => {
-  const redisUri = process.env.REDIS_URI || 'redis://localhost:6379';
+  const redisUri = getRedisUri();
 
   redisClient = createClient({ url: redisUri }) as RedisClientType;
 

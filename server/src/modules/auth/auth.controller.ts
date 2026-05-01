@@ -1,3 +1,4 @@
+// AuthController handles HTTP requests for authentication
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
@@ -72,6 +73,54 @@ export class AuthController {
         success: false,
         message: error.message || 'Authentication failed',
       });
+    }
+  }
+
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ success: false, message: 'Email is required' });
+        return;
+      }
+
+      const result = await AuthService.forgotPassword(email);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { token, password } = req.body;
+      if (!token || !password) {
+        res.status(400).json({ success: false, message: 'Token and password are required' });
+        return;
+      }
+
+      const { user, token: newToken } = await AuthService.resetPassword(token, password);
+      res.status(200).json({
+        success: true,
+        data: { user, token: newToken },
+        message: 'Password reset successful',
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  static async logout(req: Request, res: Response): Promise<void> {
+    try {
+      res.status(200).json({
+        success: true,
+        message: 'Logged out successfully',
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }

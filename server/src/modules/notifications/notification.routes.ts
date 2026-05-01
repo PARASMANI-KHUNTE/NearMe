@@ -37,7 +37,7 @@ router.patch('/:id/read', async (req: AuthRequest, res: Response) => {
     const notification = await Notification.findOneAndUpdate(
       { _id: id, recipientId: userId },
       { read: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     res.status(200).json({

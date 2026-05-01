@@ -1,10 +1,42 @@
+import { useEffect, useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useNotificationStore } from '../../store/notificationStore';
 import { notificationService } from '../../services/notificationService';
 
 export function NotificationsPage() {
-  const { notifications, markAsRead } = useNotificationStore();
+  const { notifications, markAsRead, setNotifications } = useNotificationStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const data = await notificationService.getNotifications();
+        if (isMounted) {
+          setNotifications(data);
+        }
+      } catch {
+        if (isMounted) {
+          setLoadError('Could not load notifications.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setNotifications]);
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -12,6 +44,15 @@ export function NotificationsPage() {
       markAsRead(id);
     } catch (error) {
       console.error('Failed to mark as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
     }
   };
 
@@ -27,13 +68,23 @@ export function NotificationsPage() {
         </div>
         
         {unreadNotifications.length > 0 && (
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead}>
             Mark All Read
           </Button>
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {loadError && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+          {loadError}
+        </div>
+      )}
+
+      {isLoading ? (
+        <Card className="py-12 text-center">
+          <p className="text-[var(--text-muted)] text-sm">Loading notifications...</p>
+        </Card>
+      ) : notifications.length === 0 ? (
         <Card className="py-12 text-center">
           <div className="text-4xl mb-4">🔔</div>
           <h3 className="text-lg font-semibold text-[var(--text)] mb-2">No notifications yet</h3>

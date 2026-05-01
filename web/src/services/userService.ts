@@ -3,9 +3,8 @@ import type { User } from '../types';
 
 interface UserSettings {
   radius?: number;
-  shareLocation?: boolean;
-  preciseSharing?: boolean;
-  notifications?: boolean;
+  locationSharingEnabled?: boolean;
+  invisibleMode?: boolean;
 }
 
 export const userService = {

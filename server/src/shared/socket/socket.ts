@@ -1,11 +1,9 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 import { User } from '../../modules/users/user.model';
 import { logger } from '../logger/logger';
-
-dotenv.config();
+import { getJwtSecret } from '../config';
 
 let io: SocketIOServer;
 const userSocketMap = new Map<string, string>(); // userId -> socketId
@@ -15,7 +13,10 @@ export const initSocket = (server: HttpServer) => {
     cors: {
       origin: '*',
       methods: ['GET', 'POST'],
+      credentials: true,
     },
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   // JWT Authentication Middleware
@@ -26,7 +27,7 @@ export const initSocket = (server: HttpServer) => {
         return next(new Error('Authentication error: No token provided'));
       }
 
-      const jwtSecret = process.env.JWT_SECRET || 'secret';
+      const jwtSecret = getJwtSecret();
       const decoded = jwt.verify(token as string, jwtSecret) as { id: string };
 
       const user = await User.findById(decoded.id);

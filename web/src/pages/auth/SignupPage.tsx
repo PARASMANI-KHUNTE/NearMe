@@ -5,13 +5,16 @@ import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, User, Mail, Lock, ShieldCheck, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useAuthStore } from '../../store/authStore';
-import { api, getErrorMessage } from '../../services/api';
+import authService from '../../services/authService';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least 1 lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least 1 number'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -22,7 +25,6 @@ type SignupForm = z.infer<typeof signupSchema>;
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { setToken, setUser } = useAuthStore();
   const {
     register,
     handleSubmit,
@@ -34,17 +36,15 @@ export function SignupPage() {
 
   const onSubmit = async (data: SignupForm) => {
     try {
-      const response = await api.post('/auth/register', {
+      await authService.register({
         name: data.name,
         email: data.email,
         password: data.password,
       });
-      setToken(response.data.token);
-      setUser(response.data.user);
       navigate('/dashboard');
     } catch (error: unknown) {
       setError('root', { 
-        message: getErrorMessage(error),
+        message: error instanceof Error ? error.message : 'Registration failed',
       });
     }
   };

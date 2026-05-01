@@ -9,6 +9,9 @@ export function SplashScreen() {
   const [animationComplete, setAnimationComplete] = useState(false);
 
   useEffect(() => {
+    let redirectTimer: ReturnType<typeof setTimeout>;
+    let animationTimer: ReturnType<typeof setTimeout>;
+
     const verifyAndNavigate = async () => {
       if (token) {
         try {
@@ -18,9 +21,9 @@ export function SplashScreen() {
         }
       }
       
-      const timer = setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         setAnimationComplete(true);
-        setTimeout(() => {
+        animationTimer = setTimeout(() => {
           const isAuth = useAuthStore.getState().isAuthenticated;
           navigate(isAuth ? '/dashboard' : '/landing');
         }, 500);
@@ -28,7 +31,12 @@ export function SplashScreen() {
     };
 
     verifyAndNavigate();
-  }, []);
+
+    return () => {
+      clearTimeout(redirectTimer);
+      clearTimeout(animationTimer);
+    };
+  }, [navigate, setToken, token]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center">

@@ -1,8 +1,11 @@
+// AuthService handles authentication logic including Google OAuth and Password Reset
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { User, IUser } from '../users/user.model';
-import { getJwtSecret } from '../../shared/config/env';
+import { getJwtSecret, getJwtExpiresIn, getGoogleClientIds } from '../../shared/config';
+import { EmailService } from '../../shared/services/email.service';
 
 const client = new OAuth2Client();
 
@@ -72,14 +75,61 @@ export class AuthService {
     return { user: userObj as IUser, token };
   }
 
+  static async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return { message: 'If an account exists with that email, a password reset link has been sent' };
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    const resetExpires = new Date(Date.now() + 3600000); // 1 hour
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = resetExpires;
+    await user.save();
+
+    // Send email
+    await EmailService.sendPasswordResetEmail(email, user.name, resetToken);
+
+    return { message: 'If an account exists with that email, a password reset link has been sent' };
+  }
+
+  static async resetPassword(token: string, password: string): Promise<{ user: IUser; token: string }> {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    }).select('+password');
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Update password
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    const newToken = this.generateToken(user._id.toString());
+    
+    const userObj = user.toObject();
+    delete (userObj as any).password;
+
+    return { user: userObj as IUser, token: newToken };
+  }
+
   static async verifyGoogleTokenAndLogin(idToken: string): Promise<{ user: IUser; token: string }> {
+    const googleClientIds = getGoogleClientIds();
+    const audience = [
+      googleClientIds.web,
+      googleClientIds.android,
+      googleClientIds.ios,
+    ].filter((id): id is string => !!id);
+
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: [
-        process.env.GOOGLE_CLIENT_ID || '',
-        process.env.ANDROID_GOOGLE_CLIENT_ID || '',
-        process.env.IOS_GOOGLE_CLIENT_ID || '',
-      ].filter(Boolean),
+      audience,
     });
 
     const payload = ticket.getPayload();
@@ -121,7 +171,7 @@ export class AuthService {
 
   private static generateToken(userId: string): string {
     return jwt.sign({ id: userId }, getJwtSecret(), {
-      expiresIn: '30d',
+      expiresIn: getJwtExpiresIn() as any,
     });
   }
 }

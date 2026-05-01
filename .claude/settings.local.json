@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(del *)",
+      "Bash(npm uninstall *)",
+      "Bash(npm install *)",
+      "Bash(npx react-native *)",
+      "Bash(npx expo *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8081)",
+      "Bash(taskkill *)",
+      "Bash(ipconfig)",
+      "Bash(findstr IPv4)",
+      "Bash(ping *)",
+      "Bash(findstr :3000)",
+      "Bash(tasklist *)",
+      "Bash(npm run *)",
+      "Bash(where java *)",
+      "Bash(java *)",
+      "Bash(sdkmanager --version)",
+      "Bash(curl *)",
+      "Bash(unzip *)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

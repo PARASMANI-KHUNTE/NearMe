@@ -6,6 +6,15 @@ import { useFriendStore } from '../store/friendStore';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 let socket: Socket | null = null;
+type FriendRequestSocketPayload = {
+  id?: string;
+  _id?: string;
+  from?: { id?: string; _id?: string; name?: string; picture?: string };
+  metadata?: {
+    requestId?: string;
+    from?: { id?: string; _id?: string; name?: string; picture?: string };
+  };
+};
 
 export const connectSocket = () => {
   const token = useAuthStore.getState().token;
@@ -32,23 +41,39 @@ export const connectSocket = () => {
   });
 
   // Proximity alert - friend is nearby
-  socket.on('proximity_alert', (data: { id: string; friendId: string; friendName: string; message: string }) => {
+  socket.on('proximity_alert', (data: { id?: string; _id?: string; friendId: string; friendName?: string; message?: string; content?: string; createdAt?: string }) => {
     console.log('Proximity alert:', data);
     useNotificationStore.getState().addNotification({
-      id: data.id,
+      id: data.id || data._id || `proximity-${Date.now()}`,
       type: 'proximity_alert',
-      message: data.message,
+      message: data.content || data.message || `${data.friendName || 'A friend'} is nearby`,
       read: false,
-      createdAt: new Date().toISOString(),
+      createdAt: data.createdAt || new Date().toISOString(),
     });
   });
 
   // Friend request received
-  socket.on('friend_request', (data: { id: string; from: { id: string; name: string; picture?: string } }) => {
+  socket.on('friend_request', (data: FriendRequestSocketPayload) => {
     console.log('Friend request:', data);
+    const from = data.from || data.metadata?.from;
+    const requesterId = from?.id || from?._id;
+    const requestId = data.id || data.metadata?.requestId || data._id;
+
+    if (!requestId || !requesterId || !from?.name) {
+      return;
+    }
+
     useFriendStore.getState().setRequests([
       ...useFriendStore.getState().requests,
-      { id: data.from.id, name: data.from.name, picture: data.from.picture, status: 'offline' },
+      {
+        _id: requestId,
+        requesterId: {
+          _id: requesterId,
+          name: from.name,
+          picture: from.picture,
+        },
+        status: 'pending',
+      },
     ]);
   });
 

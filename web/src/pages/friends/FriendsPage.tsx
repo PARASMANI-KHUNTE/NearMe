@@ -14,28 +14,21 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useFriendStore } from '../../store/friendStore';
 import { api } from '../../services/api';
+import type { PendingRequest } from '../../types';
 
 interface SearchResult {
-  _id: string;
+  id: string;
+  _id?: string;
   name: string;
   picture?: string;
   uniqueId: string;
 }
 
-interface PendingRequest {
-  _id: string;
-  requesterId: {
-    _id: string;
-    name: string;
-    picture?: string;
-  };
-}
-
-interface Friend {
-  id: string;
+interface ServerFriend {
+  id?: string;
+  _id?: string;
   name: string;
   picture?: string;
-  status: 'offline' | 'nearby';
 }
 
 export function FriendsPage() {
@@ -51,8 +44,8 @@ export function FriendsPage() {
         // Load friends
         const friendsRes = await api.get('/api/friends');
         if (friendsRes.data.data) {
-          const mappedFriends = friendsRes.data.data.map((f: any) => ({
-            id: f._id,
+          const mappedFriends = (friendsRes.data.data as ServerFriend[]).map((f) => ({
+            id: f.id || f._id || '',
             name: f.name,
             picture: f.picture,
             status: 'offline' as const,
@@ -71,7 +64,7 @@ export function FriendsPage() {
     };
 
     loadData();
-  }, []);
+  }, [setFriends, setRequests]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -113,7 +106,7 @@ export function FriendsPage() {
       });
       
       // Remove from requests
-      setRequests(requests.filter((r: any) => r._id !== requestId));
+      setRequests(requests.filter((r) => r._id !== requestId));
     } catch (error) {
       console.error('Failed to accept request:', error);
     }
@@ -122,7 +115,7 @@ export function FriendsPage() {
   const handleRejectRequest = async (requestId: string) => {
     try {
       await api.post(`/api/friends/request/${requestId}/reject`);
-      setRequests(requests.filter((r: any) => r._id !== requestId));
+      setRequests(requests.filter((r) => r._id !== requestId));
     } catch (error) {
       console.error('Failed to reject request:', error);
     }
@@ -152,7 +145,7 @@ export function FriendsPage() {
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search by name..."
+            placeholder="Search by NearMe ID..."
             className="w-full glass bg-white/5 border-[var(--border)] border-none rounded-full py-5 pl-14 pr-6 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all font-bold text-sm tracking-tight"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -174,7 +167,7 @@ export function FriendsPage() {
           </div>
           <div className="space-y-2">
             {searchResults.map((result) => (
-              <div key={result._id} className="flex items-center justify-between p-3 bg-surface rounded-xl">
+              <div key={result.id || result._id} className="flex items-center justify-between p-3 bg-surface rounded-xl">
                 <div className="flex items-center gap-3">
                   <img src={result.picture || `https://ui-avatars.com/api/?name=${result.name}&background=random`} alt="" className="w-10 h-10 rounded-xl" />
                   <div>
@@ -182,7 +175,7 @@ export function FriendsPage() {
                     <p className="text-xs text-[var(--text-muted)]">{result.uniqueId}</p>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => handleAddFriend(result._id)}>
+                <Button size="sm" onClick={() => handleAddFriend(result.id || result._id || '')}>
                   Add
                 </Button>
               </div>
@@ -278,7 +271,7 @@ export function FriendsPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold mb-2">No Friends Yet</h3>
-                  <p className="text-[var(--text-muted)] max-w-xs mx-auto">Search for friends by name above.</p>
+                  <p className="text-[var(--text-muted)] max-w-xs mx-auto">Search for friends by NearMe ID above.</p>
                 </div>
               </div>
             ) : (

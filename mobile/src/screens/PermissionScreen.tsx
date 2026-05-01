@@ -6,26 +6,41 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { LocationService } from '../services/locationService';
+import { useAppStore } from '../store/useAppStore';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Permission'>;
 
 const PermissionScreen = () => {
     const navigation = useNavigation<NavProp>();
+    const shareLocation = useAppStore((state) => state.shareLocation);
+
+    const enterApp = async () => {
+        if (shareLocation) {
+            try {
+                await LocationService.startLocationUpdates();
+            } catch (error) {
+                console.log('[Permission] Deferred location updates:', (error as Error).message);
+            }
+        }
+
+        navigation.replace('MainTabs');
+    };
 
     useEffect(() => {
         const checkPermission = async () => {
             const { status } = await Location.getForegroundPermissionsAsync();
             if (status === 'granted') {
-                navigation.replace('MainTabs');
+                await enterApp();
             }
         };
         checkPermission();
-    }, [navigation]);
+    }, [navigation, shareLocation]);
 
     const requestLocationPermission = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-            navigation.replace('MainTabs');
+            await enterApp();
         } else {
             alert('Location permission is required for NearMe to function.');
         }

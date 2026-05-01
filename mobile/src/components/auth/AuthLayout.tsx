@@ -24,6 +24,7 @@ type Props = {
   footerText: string;
   footerLinkText: string;
   onFooterLinkPress: () => void;
+  hideGoogle?: boolean;
 };
 
 export const AuthLayout: React.FC<Props> = ({
@@ -39,6 +40,7 @@ export const AuthLayout: React.FC<Props> = ({
   footerText,
   footerLinkText,
   onFooterLinkPress,
+  hideGoogle = false,
 }) => {
   const { theme } = useAppTheme();
 
@@ -73,7 +75,7 @@ export const AuthLayout: React.FC<Props> = ({
           style={{ marginTop: theme.spacing.md }}
         />
 
-        {onGooglePress ? (
+        {onGooglePress && !hideGoogle ? (
           <>
             <View style={[styles.dividerContainer, { marginVertical: theme.spacing.lg }]}>
               <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />

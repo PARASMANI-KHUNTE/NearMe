@@ -1,5 +1,4 @@
-import { Types } from 'mongoose';
-import { FriendRequest, IFriendRequest, RequestStatus } from './friend-request.model';
+import { FriendRequest, IFriendRequest } from './friend-request.model';
 import { User, IUser } from '../users/user.model';
 
 export class FriendService {
@@ -56,7 +55,8 @@ export class FriendService {
       $or: [{ requesterId: userId }, { recipientId: userId }],
       status: 'accepted',
     }).populate('requesterId', 'name email picture settings')
-      .populate('recipientId', 'name email picture settings');
+      .populate('recipientId', 'name email picture settings')
+      .exec();
 
     // Extract the actual friend object from the request
     const friends = requests.map((req: any) => {
@@ -74,6 +74,24 @@ export class FriendService {
     return FriendRequest.find({
       recipientId: userId,
       status: 'pending',
-    }).populate('requesterId', 'name picture uniqueId');
+    }).populate('requesterId', 'name picture uniqueId').exec();
+  }
+
+  static async removeFriend(userId: string, friendId: string): Promise<void> {
+    if (userId === friendId) {
+      throw new Error('You cannot remove yourself as a friend');
+    }
+
+    const result = await FriendRequest.findOneAndDelete({
+      $or: [
+        { requesterId: userId, recipientId: friendId },
+        { requesterId: friendId, recipientId: userId },
+      ],
+      status: 'accepted',
+    });
+
+    if (!result) {
+      throw new Error('Friend not found');
+    }
   }
 }

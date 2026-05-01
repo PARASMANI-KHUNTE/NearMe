@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthService } from '../services/authService';
 
 interface AuthState {
@@ -15,21 +15,36 @@ interface AuthState {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (data: { email: string; password: string; name: string }) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
   clearError: () => void;
   checkAuth: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
 }
 
-// Custom storage for Zustand persist using SecureStore
-const secureStorage = {
+// AsyncStorage - works without native build
+const storage = {
   getItem: async (name: string) => {
-    const value = await SecureStore.getItemAsync(name);
-    return value ? JSON.parse(value) : null;
+    try {
+      const value = await AsyncStorage.getItem(name);
+      return value;
+    } catch {
+      return null;
+    }
   },
-  setItem: async (name: string, value: any) => {
-    await SecureStore.setItemAsync(name, JSON.stringify(value));
+  setItem: async (name: string, value: string) => {
+    try {
+      await AsyncStorage.setItem(name, value);
+    } catch (e) {
+      console.log('[Storage] setItem failed:', name);
+    }
   },
   removeItem: async (name: string) => {
-    await SecureStore.deleteItemAsync(name);
+    try {
+      await AsyncStorage.removeItem(name);
+    } catch {
+      console.log('[Storage] removeItem failed:', name);
+    }
   },
 };
 
@@ -130,6 +145,8 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      setUser: (user) => set({ user }),
+
       clearError: () => set({ error: null }),
 
       checkAuth: async () => {
@@ -137,6 +154,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const token = await AuthService.getStoredToken();
           const user = await AuthService.getStoredUser();
+
+          console.log('[Auth] checkAuth - token:', !!token, 'user:', !!user);
 
           if (token && user) {
             set({
@@ -164,15 +183,42 @@ export const useAuthStore = create<AuthState>()(
           });
         }
       },
+
+      forgotPassword: async (email: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await AuthService.forgotPassword(email);
+          set({ isLoading: false });
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message });
+          throw error;
+        }
+      },
+
+      resetPassword: async (token: string, password: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { user, token: newToken } = await AuthService.resetPassword(token, password);
+          set({
+            user,
+            token: newToken,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message });
+          throw error;
+        }
+      },
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => secureStorage),
-      // Only persist user and token, not loading states
+      storage: createJSONStorage(() => storage),
+      // Only persist token/user, not isAuthenticated (derive from presence of token)
       partialize: (state) => ({
         user: state.user,
         token: state.token,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

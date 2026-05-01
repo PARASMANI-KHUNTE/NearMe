@@ -1,73 +1,122 @@
 import { io, Socket } from 'socket.io-client';
 import { env } from '../config/env';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = 'auth_token';
 
-export type NotificationType = 'friend_request' | 'proximity_alert' | 'meet_request';
+export type NotificationType = 'friend_request' | 'friend_accepted' | 'proximity_alert' | 'meet_request';
 
 export interface SocketNotification {
   _id: string;
   type: NotificationType;
   content: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   senderId?: string;
   createdAt: string;
 }
 
+export interface RawFriendRequestSocketPayload {
+  id: string;
+  from?: {
+    id: string;
+    name?: string;
+    picture?: string;
+  };
+}
+
 class SocketService {
   private socket: Socket | null = null;
-  private eventCallbacks: Map<string, ((data: any) => void)[]> = new Map();
+  private connectionPromise: Promise<void> | null = null;
+  private eventCallbacks: Map<string, ((data: unknown) => void)[]> = new Map();
 
   /**
    * Connect to socket server with JWT authentication
    */
   async connect(): Promise<void> {
     if (this.socket?.connected) {
+      console.log('[Socket] Already connected');
       return;
     }
 
-    try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = (async () => {
+      const token = await AsyncStorage.getItem(TOKEN_KEY);
+
       if (!token) {
-        throw new Error('No auth token available');
+        throw new Error('No auth token');
       }
 
-      this.socket = io(env.SOCKET_URL, {
-        auth: {
-          token,
-        },
-        transports: ['websocket'],
+      const socketUrl = env.SOCKET_URL;
+
+      this.socket?.disconnect();
+
+      this.socket = io(socketUrl, {
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+        forceNew: true,
       });
 
-      this.socket.on('connect', () => {
-        console.log('Socket connected');
-      });
+      await new Promise<void>((resolve, reject) => {
+        const socket = this.socket!;
 
-      this.socket.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason);
-      });
+        const cleanup = () => {
+          socket.off('connect', handleConnect);
+          socket.off('connect_error', handleConnectError);
+        };
 
-      this.socket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-      });
+        const handleConnect = () => {
+          console.log('[Socket] Connected via', socket.io.engine.transport.name);
+          console.log('[Socket] Connected successfully');
+          cleanup();
+          resolve();
+        };
 
-      // Listen to notification events
-      this.socket.on('proximity_alert', (data: SocketNotification) => {
-        this.emitEvent('proximity_alert', data);
-      });
+        const handleConnectError = (error: Error) => {
+          console.error('[Socket] Connection error:', error.message);
+          if (error.message.includes('Authentication')) {
+            console.error('[Socket] Token may be invalid or expired');
+          }
+          cleanup();
+          reject(error);
+        };
 
-      this.socket.on('friend_request', (data: SocketNotification) => {
-        this.emitEvent('friend_request', data);
-      });
+        socket.once('connect', handleConnect);
+        socket.once('connect_error', handleConnectError);
 
-      this.socket.on('meet_request', (data: SocketNotification) => {
-        this.emitEvent('meet_request', data);
-      });
+        socket.on('disconnect', (reason) => {
+          console.log('[Socket] Disconnected:', reason);
+        });
 
+        socket.on('proximity_alert', (data: SocketNotification) => {
+          this.emitEvent('proximity_alert', data);
+        });
+
+        socket.on('friend_request', (data: SocketNotification | RawFriendRequestSocketPayload) => {
+          this.emitEvent('friend_request', data);
+        });
+
+        socket.on('meet_request', (data: SocketNotification) => {
+          this.emitEvent('meet_request', data);
+        });
+      });
+    })();
+
+    try {
+      await this.connectionPromise;
     } catch (error) {
+      this.socket?.disconnect();
+      this.socket = null;
       console.error('Socket connect error:', error);
       throw error;
+    } finally {
+      this.connectionPromise = null;
     }
   }
 
@@ -75,17 +124,17 @@ class SocketService {
    * Disconnect from socket server
    */
   disconnect(): void {
+    this.connectionPromise = null;
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
-      this.eventCallbacks.clear();
     }
   }
 
   /**
    * Subscribe to socket events
    */
-  subscribe(event: string, callback: (data: any) => void): void {
+  subscribe(event: string, callback: (data: unknown) => void): void {
     if (!this.eventCallbacks.has(event)) {
       this.eventCallbacks.set(event, []);
     }
@@ -95,7 +144,7 @@ class SocketService {
   /**
    * Unsubscribe from socket events
    */
-  unsubscribe(event: string, callback: (data: any) => void): void {
+  unsubscribe(event: string, callback: (data: unknown) => void): void {
     const callbacks = this.eventCallbacks.get(event);
     if (callbacks) {
       const index = callbacks.indexOf(callback);
@@ -108,7 +157,7 @@ class SocketService {
   /**
    * Emit event to subscribers
    */
-  private emitEvent(event: string, data: any): void {
+  private emitEvent(event: string, data: unknown): void {
     const callbacks = this.eventCallbacks.get(event);
     if (callbacks) {
       callbacks.forEach(callback => callback(data));

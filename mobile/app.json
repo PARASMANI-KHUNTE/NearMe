@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NearMe",
+    "name": "nearme",
     "slug": "nearme",
     "version": "1.0.0",
     "runtimeVersion": {
@@ -9,7 +9,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,12 +22,7 @@
     "scheme": "nearme",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.parasmani.nearme",
-      "config": {
-        "googleSignIn": {
-          "reservedClientId": "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com"
-        }
-      }
+      "bundleIdentifier": "com.parasmani.nearme"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,8 +30,6 @@
         "monochromeImage": "./assets/adaptive-icon-monochrome.png",
         "backgroundColor": "#0F172A"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
       "package": "com.parasmani.nearme"
     },
     "web": {
@@ -45,9 +37,12 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-updates"
+      "expo-updates",
+      "expo-font",
+      "expo-web-browser"
     ],
     "extra": {
+      "serverIp": "192.168.1.4",
       "eas": {
         "projectId": "39e48b99-60c0-4676-b094-68a2159c9460"
       }
