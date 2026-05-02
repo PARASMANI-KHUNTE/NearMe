@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthService } from '../services/authService';
+import { useNotificationStore } from './notificationStore';
 
 interface AuthState {
   user: User | null;
@@ -58,9 +59,11 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       login: async (idToken: string) => {
+        console.log('[AuthStore] login start');
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.loginWithGoogle(idToken);
+          console.log('[AuthStore] login success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -76,14 +79,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Login failed',
           });
+          console.log('[AuthStore] login failed', error?.message || error);
           throw error;
         }
       },
 
       loginWithEmail: async (email: string, password: string) => {
+        console.log('[AuthStore] email login start', { email });
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.login(email, password);
+          console.log('[AuthStore] email login success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -99,14 +105,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Login failed',
           });
+          console.log('[AuthStore] email login failed', error?.message || error);
           throw error;
         }
       },
 
       registerWithEmail: async (data: { email: string; password: string; name: string }) => {
+        console.log('[AuthStore] register start', { email: data.email });
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.register(data);
+          console.log('[AuthStore] register success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -122,14 +131,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Registration failed',
           });
+          console.log('[AuthStore] register failed', error?.message || error);
           throw error;
         }
       },
 
       logout: async () => {
+        console.log('[AuthStore] logout start');
         set({ isLoading: true });
         try {
           await AuthService.logout();
+          useNotificationStore.getState().clearNotifications();
           set({
             user: null,
             token: null,
@@ -137,11 +149,13 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           });
+          console.log('[AuthStore] logout success');
         } catch (error: any) {
           set({
             isLoading: false,
             error: error.message || 'Logout failed',
           });
+          console.log('[AuthStore] logout failed', error?.message || error);
         }
       },
 
@@ -150,6 +164,7 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       checkAuth: async () => {
+        console.log('[AuthStore] checkAuth start');
         set({ isLoading: true });
         try {
           const token = await AuthService.getStoredToken();
@@ -158,6 +173,7 @@ export const useAuthStore = create<AuthState>()(
           console.log('[Auth] checkAuth - token:', !!token, 'user:', !!user);
 
           if (token && user) {
+            console.log('[AuthStore] checkAuth authenticated path');
             set({
               user,
               token,
@@ -166,6 +182,7 @@ export const useAuthStore = create<AuthState>()(
               error: null,
             });
           } else {
+            console.log('[AuthStore] checkAuth unauthenticated path');
             set({
               user: null,
               token: null,
@@ -174,6 +191,7 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch (error: any) {
+          console.log('[AuthStore] checkAuth failed', error?.message || error);
           set({
             user: null,
             token: null,
@@ -218,7 +236,6 @@ export const useAuthStore = create<AuthState>()(
       // Only persist token/user, not isAuthenticated (derive from presence of token)
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
       }),
     }
   )

@@ -26,6 +26,7 @@ const ProfileScreen = () => {
 
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState(user);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -39,10 +40,18 @@ const ProfileScreen = () => {
   useEffect(() => {
     if (token) {
       UserService.getProfile()
-        .then(updated => setProfileUser(updated))
+        .then(updated => {
+          setProfileUser(updated);
+          setImageError(false); // Reset error when profile updates
+        })
         .catch(() => setProfileUser(user));
     }
   }, [token]);
+
+  // Reset image error when profile picture changes
+  useEffect(() => {
+    setImageError(false);
+  }, [profileUser?.picture, user?.picture]);
 
   const handleSettingToggle = useCallback(
     async (
@@ -104,8 +113,12 @@ const ProfileScreen = () => {
 
         {/* Profile Card */}
         <View style={[styles.card, { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border }]}>
-          {displayUser?.picture ? (
-            <Image source={{ uri: displayUser.picture }} style={styles.avatarImg} />
+          {displayUser?.picture && !imageError ? (
+            <Image
+              source={{ uri: displayUser.picture }}
+              style={styles.avatarImg}
+              onError={() => setImageError(true)}
+            />
           ) : (
             <View style={[styles.avatar, { backgroundColor: appTheme.colors.primary }]}>
               <Text style={[styles.avatarText, { color: '#fff' }]}>

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Home, 
-  Users, 
-  Map as MapIcon, 
-  Bell, 
-  User as UserIcon, 
-  LogOut, 
-  Menu, 
+import {
+  Home,
+  Users,
+  Map as MapIcon,
+  Bell,
+  User as UserIcon,
+  LogOut,
+  Menu,
   X
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -57,6 +57,14 @@ function AppLayout() {
   }, []);
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    if (sidebarOpen) window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname, isMobile]);
 
@@ -84,14 +92,16 @@ function AppLayout() {
       {isMobile && (
         <header className="fixed top-0 left-0 right-0 h-20 glass z-40 px-6 flex items-center justify-between border-none">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-xl bg-surface/50 text-[var(--text)]"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <NearMeLogo size="sm" />
-          </div>
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="p-3 rounded-xl bg-[var(--surface)]/50 text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--background)]"
+                  aria-label="Open menu"
+                  aria-expanded={sidebarOpen}
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+                <NearMeLogo size="sm" />
+              </div>
           <ThemeToggle />
         </header>
       )}
@@ -99,18 +109,20 @@ function AppLayout() {
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isMobile && sidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden"
+            role="dialog"
+            aria-modal="true"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside 
+      <motion.aside
         className={`
           ${isMobile ? 'fixed inset-y-0 left-0 z-[60] w-72 h-screen p-6' : 'w-80 h-screen sticky top-0 p-6'}
           flex flex-col gap-6
@@ -123,7 +135,7 @@ function AppLayout() {
           <div className="flex items-center justify-between mb-8 px-2">
             <NearMeLogo size="sm" />
             {isMobile && (
-              <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-surface-hover">
+              <button onClick={() => setSidebarOpen(false)} className="p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-label="Close menu">
                 <X className="w-5 h-5" />
               </button>
             )}
@@ -137,10 +149,11 @@ function AppLayout() {
                 <Link
                   key={link.path}
                   to={link.path}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`
                     relative group flex items-center gap-4 px-5 py-4 rounded-2xl font-medium transition-all duration-300
-                    ${isActive 
-                      ? 'text-white bg-primary shadow-lg shadow-primary-glow' 
+                    ${isActive
+                      ? 'text-white bg-primary shadow-lg shadow-primary-glow'
                       : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-surface-hover'
                     }
                   `}
@@ -150,7 +163,7 @@ function AppLayout() {
                   </span>
                   <span>{link.label}</span>
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       layoutId="sidebar-active"
                       className="absolute left-0 w-1 h-6 bg-white rounded-full ml-1"
                     />
@@ -164,9 +177,16 @@ function AppLayout() {
             <div className="flex items-center gap-4 px-2">
               <div className="relative">
                 <img
-                  src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name}&background=f59e0b&color=fff`}
-                  alt={user?.name}
+                  src={user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=f59e0b&color=fff`}
+                  alt={user?.name || 'User'}
                   className="w-12 h-12 rounded-2xl object-cover ring-2 ring-[var(--border)]"
+                  onError={(e) => {
+                    // If the image fails to load, fallback to avatar
+                    const target = e.currentTarget;
+                    if (!target.src.includes('ui-avatars.com')) {
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=f59e0b&color=fff`;
+                    }
+                  }}
                 />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-[var(--surface)] rounded-full" />
               </div>
@@ -176,7 +196,7 @@ function AppLayout() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-5 py-3 text-[var(--text-muted)] hover:text-error hover:bg-error/10 rounded-2xl transition-all duration-300"
             >

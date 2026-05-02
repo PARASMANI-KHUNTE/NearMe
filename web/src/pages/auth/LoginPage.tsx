@@ -21,7 +21,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [googleInitError, setGoogleInitError] = useState<string | null>(null);
-   
+
   const {
     register,
     handleSubmit,
@@ -90,13 +90,13 @@ export function LoginPage() {
   };
 
   return (
-    <Card variant="glass" className="w-full p-6 md:p-8">
-      <div className="text-center mb-6 md:mb-8">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--primary)] flex items-center justify-center">
-          <span className="text-3xl">📍</span>
+    <Card variant="glass" className="w-full max-w-2xl mx-auto p-6 sm:p-8 md:p-10">
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="w-14 sm:w-16 h-14 sm:h-16 mx-auto mb-4 rounded-2xl bg-[var(--primary)] flex items-center justify-center">
+          <span className="text-2xl sm:text-3xl">📍</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)] mb-2">Welcome Back</h1>
-        <p className="text-[var(--text-muted)]">Sign in to continue</p>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text)] mb-2">Welcome Back</h1>
+        <p className="text-sm sm:text-base text-[var(--text-muted)]">Sign in to continue</p>
       </div>
 
       {googleInitError ? (
@@ -104,13 +104,13 @@ export function LoginPage() {
           <Button variant="secondary" disabled className="w-full">
             Continue with Google
           </Button>
-          <p className="mt-2 text-sm text-[var(--error)]">{googleInitError}</p>
+          <p className="mt-3 text-xs sm:text-sm text-[var(--error)] font-semibold flex items-center gap-2"><span>⚠</span> {googleInitError}</p>
         </div>
       ) : (
         <div className="w-full mb-6">
           <div id="google-signin-button" className="w-full flex justify-center" />
           {isLoading && (
-            <p className="mt-3 text-sm text-[var(--text-muted)] text-center">
+            <p className="mt-3 text-xs sm:text-sm text-[var(--text-muted)] text-center animate-pulse">
               Signing you in...
             </p>
           )}
@@ -119,14 +119,14 @@ export function LoginPage() {
 
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[var(--border)]" />
+          <div className="w-full border-t-2 border-[var(--border)]" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-[var(--surface)] text-[var(--text-muted)]">or</span>
+          <span className="px-4 bg-[var(--surface)] text-[var(--text-muted)] font-semibold uppercase tracking-wider text-xs">or</span>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
         <Input
           label="Email"
           type="email"
@@ -143,23 +143,26 @@ export function LoginPage() {
         />
 
         {errors.root && (
-          <p className="text-sm text-[var(--error)]">{errors.root.message}</p>
+          <div className="p-4 rounded-2xl bg-error/10 border-2 border-error/30 text-error text-sm font-semibold flex items-center gap-3">
+            <span>⚠</span>
+            <span>{errors.root.message}</span>
+          </div>
         )}
 
-        <Button type="submit" isLoading={isLoading} className="w-full">
+        <Button type="submit" isLoading={isLoading} className="w-full py-3 sm:py-4 mt-6 text-base font-semibold">
           Sign In
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm">
-        <Link to="/forgot-password" className="text-[var(--text-muted)] hover:text-[var(--primary)]">
+      <p className="mt-6 text-center text-xs sm:text-sm">
+        <Link to="/forgot-password" className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
           Forgot password?
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+      <p className="mt-8 text-center text-xs sm:text-sm text-[var(--text-muted)]">
         Don&apos;t have an account?{' '}
-        <Link to="/signup" className="text-[var(--primary)] hover:underline font-medium">
+        <Link to="/signup" className="text-[var(--primary)] hover:underline font-bold">
           Sign up
         </Link>
       </p>

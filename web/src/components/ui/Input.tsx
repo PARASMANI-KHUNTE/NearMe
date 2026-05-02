@@ -10,25 +10,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+          <label className="block text-sm font-semibold text-[var(--text-muted)] mb-3 uppercase tracking-wide">
             {label}
           </label>
         )}
         <input
           ref={ref}
           className={`
-            w-full px-4 py-3 rounded-xl 
-            bg-[var(--surface)] border border-[var(--border)] 
+            w-full px-4 py-3 rounded-2xl
+            bg-[var(--surface)] border-2 ${error ? 'border-[var(--error)]' : 'border-[var(--border)]'}
             text-[var(--text)] placeholder-[var(--text-muted)]
-            focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]
+            focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--background)]
             transition-all duration-200
-            ${error ? 'border-[var(--error)]' : ''} 
             ${className}
           `}
           {...props}
         />
         {error && (
-          <p className="mt-1 text-sm text-[var(--error)]">{error}</p>
+          <p className="mt-2 text-sm font-semibold text-[var(--error)] flex items-center gap-1">
+            <span>⚠</span> {error}
+          </p>
         )}
       </div>
     );

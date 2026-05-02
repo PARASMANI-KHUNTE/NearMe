@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  UserPlus, 
-  UserMinus, 
-  Check, 
-  X, 
+import {
+  Users,
+  Search,
+  UserPlus,
+  UserMinus,
+  Check,
+  X,
   MessageCircle,
   ShieldAlert
 } from 'lucide-react';
@@ -97,14 +97,14 @@ export function FriendsPage() {
   const handleAcceptRequest = async (requestId: string, requesterId: string, requesterName: string) => {
     try {
       await api.post(`/api/friends/request/${requestId}/accept`);
-      
+
       // Add to friends list
       addFriend({
         id: requesterId,
         name: requesterName,
         status: 'offline',
       });
-      
+
       // Remove from requests
       setRequests(requests.filter((r) => r._id !== requestId));
     } catch (error) {
@@ -140,7 +140,7 @@ export function FriendsPage() {
           </h1>
           <p className="text-[var(--text-muted)] text-lg font-medium">Manage your friends and requests.</p>
         </div>
-        
+
         <div className="w-full md:w-96 relative group">
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" />
           <input
@@ -169,7 +169,17 @@ export function FriendsPage() {
             {searchResults.map((result) => (
               <div key={result.id || result._id} className="flex items-center justify-between p-3 bg-surface rounded-xl">
                 <div className="flex items-center gap-3">
-                  <img src={result.picture || `https://ui-avatars.com/api/?name=${result.name}&background=random`} alt="" className="w-10 h-10 rounded-xl" />
+                  <img
+                    src={result.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.name || 'User')}&background=random`}
+                    alt={result.name || 'User'}
+                    className="w-10 h-10 rounded-xl"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('ui-avatars.com')) {
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(result.name || 'User')}&background=random`;
+                      }
+                    }}
+                  />
                   <div>
                     <p className="font-bold text-sm">{result.name}</p>
                     <p className="text-xs text-[var(--text-muted)]">{result.uniqueId}</p>
@@ -185,7 +195,7 @@ export function FriendsPage() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        
+
         {/* Friend Requests - Right Column on large screens */}
         <div className="xl:col-span-4 order-1 xl:order-2 space-y-8">
           <AnimatePresence>
@@ -213,16 +223,22 @@ export function FriendsPage() {
                       >
                         <div className="flex items-center gap-4">
                           <img
-                            src={request.requesterId.picture || `https://ui-avatars.com/api/?name=${request.requesterId.name}&background=f59e0b&color=fff`}
-                            alt=""
+                            src={request.requesterId.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(request.requesterId.name || 'User')}&background=f59e0b&color=fff`}
+                            alt={request.requesterId.name || 'User'}
                             className="w-12 h-12 rounded-xl object-cover"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (!target.src.includes('ui-avatars.com')) {
+                                target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(request.requesterId.name || 'User')}&background=f59e0b&color=fff`;
+                              }
+                            }}
                           />
                           <span className="text-sm font-bold tracking-tight">{request.requesterId.name}</span>
                         </div>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
+                          <Button
+                            variant="primary"
+                            size="sm"
                             className="w-9 h-9 p-0 rounded-xl"
                             onClick={() => handleAcceptRequest(request._id, request.requesterId._id, request.requesterId.name)}
                           >
@@ -287,13 +303,18 @@ export function FriendsPage() {
                     <div className="flex items-center gap-4">
                       <div className="relative">
                         <img
-                          src={friend.picture || `https://ui-avatars.com/api/?name=${friend.name}&background=random`}
-                          alt=""
+                          src={friend.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name || 'Friend')}&background=random`}
+                          alt={friend.name || 'Friend'}
                           className="w-14 h-14 rounded-2xl object-cover ring-2 ring-transparent group-hover:ring-primary/20 transition-all"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.src.includes('ui-avatars.com')) {
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name || 'Friend')}&background=random`;
+                            }
+                          }}
                         />
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[var(--surface)] rounded-full ${
-                          friend.status === 'nearby' ? 'bg-primary shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-[var(--text-muted)]'
-                        }`} />
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[var(--surface)] rounded-full ${friend.status === 'nearby' ? 'bg-primary shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-[var(--text-muted)]'
+                          }`} />
                       </div>
                       <div>
                         <p className="text-sm font-bold tracking-tight">{friend.name}</p>
@@ -307,10 +328,10 @@ export function FriendsPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                       <Button variant="glass" size="sm" className="w-10 h-10 p-0 rounded-xl">
-                          <MessageCircle className="w-4 h-4" />
-                       </Button>
-                       <Button
+                      <Button variant="glass" size="sm" className="w-10 h-10 p-0 rounded-xl">
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                      <Button
                         size="sm"
                         variant="ghost"
                         className="w-10 h-10 p-0 rounded-xl text-error hover:bg-error/10"

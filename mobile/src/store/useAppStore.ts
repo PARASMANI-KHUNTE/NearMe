@@ -98,11 +98,30 @@ export const useAppStore = create<AppState>()(
       setShareLocation: (share) => set({ shareLocation: share }),
       setInvisibleMode: (invisible) => set({ invisibleMode: invisible }),
       setThemeMode: (mode) => set({ themeMode: mode }),
-      syncPreferences: (settings) => set((state) => ({
-        radius: settings?.radius ?? state.radius,
-        shareLocation: settings?.locationSharingEnabled ?? state.shareLocation,
-        invisibleMode: settings?.invisibleMode ?? state.invisibleMode,
-      })),
+      syncPreferences: (settings) =>
+        set((state) => {
+          if (!settings) {
+            return state;
+          }
+
+          const nextRadius = settings.radius ?? state.radius;
+          const nextShareLocation = settings.locationSharingEnabled ?? state.shareLocation;
+          const nextInvisibleMode = settings.invisibleMode ?? state.invisibleMode;
+
+          if (
+            nextRadius === state.radius &&
+            nextShareLocation === state.shareLocation &&
+            nextInvisibleMode === state.invisibleMode
+          ) {
+            return state;
+          }
+
+          return {
+            radius: nextRadius,
+            shareLocation: nextShareLocation,
+            invisibleMode: nextInvisibleMode,
+          };
+        }),
       toggleThemeMode: () => set((state) => ({
         themeMode: state.themeMode === 'night' ? 'day' : 'night',
       })),

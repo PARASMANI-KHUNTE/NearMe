@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  MapPin, 
-  Shield, 
-  Zap, 
-  RefreshCcw, 
-  Clock, 
+import {
+  Users,
+  MapPin,
+  Shield,
+  Zap,
+  RefreshCcw,
+  Clock,
   ChevronRight,
   UserPlus,
   Send,
@@ -35,21 +35,20 @@ export function DashboardPage() {
           <h1 className="text-4xl font-black tracking-tight text-[var(--text)]">Dashboard</h1>
           <p className="text-[var(--text-muted)] text-lg">Manage your proximity presence and connections.</p>
         </div>
-        
+
         <div className="flex items-center gap-4">
-          <Button 
-            variant="glass" 
-            size="sm" 
-            onClick={refresh} 
+          <Button
+            variant="glass"
+            size="sm"
+            onClick={refresh}
             isLoading={loading}
             className="rounded-full"
           >
             <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
-          <div className={`flex items-center gap-2 px-6 py-3 rounded-full glass border-none font-bold text-sm ${
-            isTracking ? 'text-primary' : 'text-[var(--text-muted)]'
-          }`}>
+          <div className={`flex items-center gap-2 px-6 py-3 rounded-full glass border-none font-bold text-sm ${isTracking ? 'text-primary' : 'text-[var(--text-muted)]'
+            }`}>
             <span className={`w-2.5 h-2.5 rounded-full ${isTracking ? 'bg-primary animate-pulse' : 'bg-[var(--border)]'}`} />
             {isTracking ? 'LIVE TRACKING' : 'IDLE'}
           </div>
@@ -57,7 +56,7 @@ export function DashboardPage() {
       </section>
 
       {error && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="p-6 rounded-[2rem] bg-error/10 border border-error/20 text-error flex items-center justify-between"
@@ -72,10 +71,10 @@ export function DashboardPage() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left Column: Stats & Controls */}
         <div className="lg:col-span-7 space-y-8">
-          
+
           {/* Proximity Card */}
           <Card variant="glass" className="p-10 border-none relative group overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -85,7 +84,7 @@ export function DashboardPage() {
               <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-2">Network Status</p>
               <h2 className="text-6xl font-black text-primary mb-4 leading-none">{nearbyFriends.length}</h2>
               <p className="text-xl font-bold mb-6 text-[var(--text)]">Friends Nearby Right Now</p>
-              
+
               <div className="flex items-center gap-4 text-sm bg-white/5 rounded-2xl p-4 inline-flex">
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="text-[var(--text-muted)]">
@@ -101,7 +100,7 @@ export function DashboardPage() {
               <Settings className="w-6 h-6 text-primary" />
               <h2 className="text-2xl font-bold">Privacy Controls</h2>
             </div>
-            
+
             <div className="space-y-10">
               <Toggle
                 label="Proximity Broadcasting"
@@ -120,7 +119,7 @@ export function DashboardPage() {
                     {radius >= 1000 ? `${radius / 1000}km` : `${radius}m`}
                   </span>
                 </div>
-                
+
                 <input
                   type="range"
                   min="1"
@@ -156,7 +155,7 @@ export function DashboardPage() {
 
         {/* Right Column: Friends & Activity */}
         <div className="lg:col-span-5 space-y-8">
-          
+
           <Card className="p-8 border-[var(--border)] h-full">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -174,17 +173,23 @@ export function DashboardPage() {
                 </div>
               ) : (
                 nearbyFriends.map((friend) => (
-                  <motion.div 
+                  <motion.div
                     layout
                     key={friend.id}
                     className="flex items-center justify-between p-4 rounded-2xl bg-surface-hover/30 hover:bg-surface-hover transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <img 
-                          src={friend.picture || `https://ui-avatars.com/api/?name=${friend.name}&background=random`} 
-                          alt="" 
+                        <img
+                          src={friend.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name || 'Friend')}&background=random`}
+                          alt={friend.name || 'Friend'}
                           className="w-12 h-12 rounded-xl object-cover"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.src.includes('ui-avatars.com')) {
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name || 'Friend')}&background=random`;
+                            }
+                          }}
                         />
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-[var(--surface)]" />
                       </div>

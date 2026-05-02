@@ -6,15 +6,23 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        primary: '#4F46E5',
-        background: '#0F172A',
-        surface: '#1E293B',
-        text: '#E2E8F0',
-        accent: '#38BDF8',
-      },
       borderRadius: {
         'xl': '12px',
+        '3xl': '24px',
+      },
+      animation: {
+        float: 'float 6s ease-in-out infinite',
+        'pulse-soft': 'pulse-soft 3s ease-in-out infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        'pulse-soft': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.8', transform: 'scale(1.02)' },
+        },
       },
     },
   },

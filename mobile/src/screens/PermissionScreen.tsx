@@ -59,6 +59,12 @@ const PermissionScreen = () => {
                     title="Enable Location" 
                     onPress={requestLocationPermission} 
                 />
+                <Button
+                    title="Continue Without Location"
+                    onPress={() => navigation.replace('MainTabs')}
+                    variant="outline"
+                    style={{ marginTop: theme.spacing.md }}
+                />
             </View>
         </View>
     );

@@ -1,8 +1,11 @@
 import { api } from './api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'auth_user';
+import {
+  clearStoredAuth,
+  getStoredToken,
+  getStoredUser,
+  setStoredToken,
+  setStoredUser,
+} from './authStorage';
 
 export interface User {
   id: string;
@@ -43,10 +46,10 @@ export class AuthService {
       const { user, token } = response.data.data;
 
       // Store token securely
-      await AsyncStorage.setItem(TOKEN_KEY, token);
+      await setStoredToken(token);
 
       // Store user data (non-sensitive, can be in secure store or async storage)
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      await setStoredUser(user);
 
       return { user, token };
     } catch (error: any) {
@@ -68,8 +71,8 @@ export class AuthService {
 
       const { user, token } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      await setStoredToken(token);
+      await setStoredUser(user);
 
       return { user, token };
     } catch (error: any) {
@@ -91,8 +94,8 @@ export class AuthService {
 
       const { user, token } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      await setStoredToken(token);
+      await setStoredUser(user);
 
       return { user, token };
     } catch (error: any) {
@@ -106,8 +109,7 @@ export class AuthService {
    */
   static async logout(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(TOKEN_KEY);
-      await AsyncStorage.removeItem(USER_KEY);
+      await clearStoredAuth();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -118,7 +120,7 @@ export class AuthService {
    */
   static async getStoredToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(TOKEN_KEY);
+      return await getStoredToken();
     } catch (error) {
       console.error('Error retrieving token:', error);
       return null;
@@ -130,8 +132,7 @@ export class AuthService {
    */
   static async getStoredUser(): Promise<User | null> {
     try {
-      const userJson = await AsyncStorage.getItem(USER_KEY);
-      return userJson ? JSON.parse(userJson) : null;
+      return await getStoredUser();
     } catch (error) {
       console.error('Error retrieving user:', error);
       return null;
@@ -166,8 +167,8 @@ export class AuthService {
 
       const { user, token: newToken } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, newToken);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      await setStoredToken(newToken);
+      await setStoredUser(user);
 
       return { user, token: newToken };
     } catch (error: any) {

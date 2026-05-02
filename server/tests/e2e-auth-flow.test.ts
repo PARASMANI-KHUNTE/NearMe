@@ -1,11 +1,11 @@
 /**
  * End-to-end Auth & Google OAuth Flow Test Script
- * Tests the live backend at https://nearme-rho.vercel.app
+ * Tests the backend defined by API_URL (or localhost by default)
  * 
  * Usage: cd server && npx ts-node tests/e2e-auth-flow.test.ts
  */
 
-const BASE_URL = process.env.API_URL || 'https://nearme-rho.vercel.app/api';
+const BASE_URL = process.env.API_URL || 'http://localhost:3000/api';
 const WEB_GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
 const testUserEmail = `test-${Date.now()}@nearme-test.com`;
@@ -31,7 +31,7 @@ function section(msg: string) { console.log(`\n${CYAN}═══ ${msg} ═══
 let passed = 0;
 let failed = 0;
 
-async function test(name: string, fn: () => Promise<void>) {
+async function runCheck(name: string, fn: () => Promise<void>) {
   process.stdout.write(`  ${name}... `);
   try {
     await fn();
@@ -67,12 +67,12 @@ async function run() {
   // ─── 1. Backend Health ───
   section('1. Backend Health');
 
-  await test('Backend is reachable', async () => {
+  await runCheck('Backend is reachable', async () => {
     const res = await fetch(`${BASE_URL.replace('/api', '')}/health`);
     if (res.status !== 200) throw new Error(`Status ${res.status}`);
   });
 
-  await test('API responds to auth endpoints', async () => {
+  await runCheck('API responds to auth endpoints', async () => {
     const res = await api('POST', '/auth/login', { email: 'x@x.com', password: 'x' });
     if (res.status === 404) throw new Error('Auth endpoint not found');
     if (res.status !== 400 && res.status !== 401) throw new Error(`Unexpected status: ${res.status}`);
@@ -81,16 +81,16 @@ async function run() {
   // ─── 2. Google OAuth Configuration ───
   section('2. Google OAuth Configuration');
 
-  await test('GOOGLE_CLIENT_ID is set in environment', async () => {
+  await runCheck('GOOGLE_CLIENT_ID is set in environment', async () => {
     if (!WEB_GOOGLE_CLIENT_ID) warn('GOOGLE_CLIENT_ID not set locally — skipping check (it may be set on Vercel)');
   });
 
-  await test('Google OAuth endpoint exists (POST /api/auth/google)', async () => {
+  await runCheck('Google OAuth endpoint exists (POST /api/auth/google)', async () => {
     const res = await api('POST', '/auth/google', { idToken: 'invalid-token' });
     if (res.status === 404) throw new Error('Endpoint does not exist');
   });
 
-  await test('Google OAuth rejects invalid token', async () => {
+  await runCheck('Google OAuth rejects invalid token', async () => {
     const res = await api('POST', '/auth/google', { idToken: 'not-a-real-token' });
     if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}: ${JSON.stringify(res.data)}`);
   });
@@ -98,7 +98,7 @@ async function run() {
   // ─── 3. Email Registration Flow ───
   section('3. Email Registration & Login');
 
-  await test('Register new user', async () => {
+  await runCheck('Register new user', async () => {
     // Retry up to 3 times — cold start may cause MongoDB timeout
     let lastErr: Error | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -128,7 +128,7 @@ async function run() {
     if (lastErr) throw lastErr;
   });
 
-  await test('Login with registered credentials', async () => {
+  await runCheck('Login with registered credentials', async () => {
     const res = await api('POST', '/auth/login', {
       email: testUserEmail,
       password: testUserPassword,
@@ -139,12 +139,12 @@ async function run() {
     authToken = data.data.token;
   });
 
-  await test('Reject wrong password', async () => {
+  await runCheck('Reject wrong password', async () => {
     const res = await api('POST', '/auth/login', { email: testUserEmail, password: 'WrongPass123' });
     if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
   });
 
-  await test('Reject duplicate registration', async () => {
+  await runCheck('Reject duplicate registration', async () => {
     const res = await api('POST', '/auth/register', {
       email: testUserEmail, password: testUserPassword, name: testUserName,
     });
@@ -154,7 +154,7 @@ async function run() {
   // ─── 4. Authenticated Endpoints ───
   section('4. Authenticated Endpoints');
 
-  await test('JWT token works for protected routes', async () => {
+  await runCheck('JWT token works for protected routes', async () => {
     const res = await api('GET', '/users/profile');
     if (res.status === 401) throw new Error('Token rejected — auth not working');
     if (res.status === 404) {
@@ -164,7 +164,7 @@ async function run() {
     }
   });
 
-  await test('Request without token is rejected', async () => {
+  await runCheck('Request without token is rejected', async () => {
     const saved = authToken;
     authToken = '';
     const res = await api('GET', '/users/profile');
@@ -172,7 +172,7 @@ async function run() {
     if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
   });
 
-  await test('Request with invalid token is rejected', async () => {
+  await runCheck('Request with invalid token is rejected', async () => {
     const saved = authToken;
     authToken = 'invalid-token-here';
     const res = await api('GET', '/users/profile');
@@ -183,13 +183,13 @@ async function run() {
   // ─── 5. Location Endpoints ───
   section('5. Location & Nearby (with auth)');
 
-  await test('Update location', async () => {
+  await runCheck('Update location', async () => {
     const res = await api('POST', '/location/update', { latitude: 28.6139, longitude: 77.2090 });
     const data = res.data as { success?: boolean; message?: string };
     if (!data?.success) throw new Error(data?.message || `Status ${res.status}`);
   });
 
-  await test('Fetch nearby users', async () => {
+  await runCheck('Fetch nearby users', async () => {
     const res = await api('GET', '/location/nearby?lat=28.6139&lng=77.2090&radius=5000');
     const data = res.data as { success?: boolean; data?: unknown[]; message?: string };
     if (!data?.success) throw new Error(data?.message);
@@ -200,7 +200,7 @@ async function run() {
   // ─── 6. CORS Check ───
   section('6. CORS Configuration');
 
-  await test('CORS headers present', async () => {
+  await runCheck('CORS headers present', async () => {
     const res = await api('OPTIONS', '/auth/login', undefined, {
       Origin: 'https://near-me-coral.vercel.app',
       'Access-Control-Request-Method': 'POST',

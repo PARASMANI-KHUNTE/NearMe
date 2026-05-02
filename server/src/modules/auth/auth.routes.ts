@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Request, Router } from 'express';
 import { z } from 'zod';
 import { AuthController } from './auth.controller';
 import { requireAuth } from '../../shared/middlewares/auth.middleware';
@@ -7,11 +7,21 @@ import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
+const getClientIp = (req: Request): string => {
+  const forwardedFor = req.headers['x-forwarded-for'];
+
+  if (typeof forwardedFor === 'string') {
+    return forwardedFor.split(',')[0]?.trim() || req.ip || 'unknown';
+  }
+
+  return req.ip || 'unknown';
+};
+
 // Strict rate limiter for auth endpoints (prevents brute force)
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // only 5 attempts per 15 minutes
-  keyGenerator: req => req.headers['x-forwarded-for'] || req.ip || 'unknown',
+  keyGenerator: getClientIp,
   message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,

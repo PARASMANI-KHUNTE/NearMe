@@ -14,6 +14,16 @@ import notificationRoutes from './modules/notifications/notification.routes';
 
 const app: Express = express();
 
+const getClientIp = (req: Request): string => {
+  const forwardedFor = req.headers['x-forwarded-for'];
+
+  if (typeof forwardedFor === 'string') {
+    return forwardedFor.split(',')[0]?.trim() || req.ip || 'unknown';
+  }
+
+  return req.ip || 'unknown';
+};
+
 const landingPage = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -242,7 +252,7 @@ app.use(cors(corsOptions));
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  keyGenerator: req => req.headers['x-forwarded-for'] || req.ip || 'unknown',
+  keyGenerator: getClientIp,
   message: { success: false, message: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -251,7 +261,7 @@ const generalLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  keyGenerator: req => req.headers['x-forwarded-for'] || req.ip || 'unknown',
+  keyGenerator: getClientIp,
   message: { success: false, message: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,

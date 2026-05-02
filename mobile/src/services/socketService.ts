@@ -154,6 +154,10 @@ class SocketService {
     }
   }
 
+  clearSubscriptions(): void {
+    this.eventCallbacks.clear();
+  }
+
   /**
    * Emit event to subscribers
    */

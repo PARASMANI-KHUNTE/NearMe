@@ -80,12 +80,12 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <Card variant="glass" className="w-full p-6 md:p-8 max-w-md">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text)] mb-2">
+    <Card variant="glass" className="w-full max-w-2xl mx-auto p-6 sm:p-8 md:p-10">
+      <div className="text-center mb-8 sm:mb-10">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text)] mb-2">
           {step === 'forgot' ? 'Reset Password' : 'Enter Token'}
         </h1>
-        <p className="text-[var(--text-muted)]">
+        <p className="text-sm sm:text-base text-[var(--text-muted)]">
           {step === 'forgot'
             ? 'Enter your email to receive a reset token'
             : 'Check your email for the token'}
@@ -93,19 +93,21 @@ export function ForgotPasswordPage() {
       </div>
 
       {message && !error && (
-        <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-lg text-green-400 text-sm">
+        <div className="mb-6 p-4 bg-success/10 border-2 border-success/30 rounded-2xl text-success text-sm font-semibold flex items-center gap-3">
+          <span>✓</span>
           {message}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+        <div className="mb-6 p-4 bg-error/10 border-2 border-error/30 rounded-2xl text-error text-sm font-semibold flex items-center gap-3">
+          <span>⚠</span>
           {error}
         </div>
       )}
 
       {step === 'forgot' ? (
-        <form onSubmit={handleForgotSubmit(onForgotSubmit)} className="space-y-4">
+        <form onSubmit={handleForgotSubmit(onForgotSubmit)} className="space-y-5 sm:space-y-6">
           <Input
             label="Email"
             type="email"
@@ -113,12 +115,12 @@ export function ForgotPasswordPage() {
             {...forgotRegister('email')}
             error={forgotErrors.email?.message}
           />
-          <Button type="submit" isLoading={isLoading} className="w-full">
+          <Button type="submit" isLoading={isLoading} className="w-full py-3 sm:py-4 mt-6 font-semibold">
             Send Reset Token
           </Button>
         </form>
       ) : (
-        <form onSubmit={handleResetSubmit(onResetSubmit)} className="space-y-4">
+        <form onSubmit={handleResetSubmit(onResetSubmit)} className="space-y-5 sm:space-y-6">
           <Input
             label="Reset Token"
             placeholder="Paste token from email"
@@ -139,17 +141,17 @@ export function ForgotPasswordPage() {
             {...resetRegister('confirmPassword')}
             error={resetErrors.confirmPassword?.message}
           />
-          <Button type="submit" isLoading={isLoading} className="w-full">
+          <Button type="submit" isLoading={isLoading} className="w-full py-3 sm:py-4 mt-6 font-semibold">
             Reset Password
           </Button>
         </form>
       )}
 
-      <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+      <p className="mt-8 text-center text-xs sm:text-sm text-[var(--text-muted)]">
         {step === 'forgot' ? (
           <>
             Remember your password?{' '}
-            <Link to="/login" className="text-[var(--primary)] hover:underline font-medium">
+            <Link to="/login" className="text-[var(--primary)] hover:underline font-bold">
               Sign in
             </Link>
           </>
@@ -158,7 +160,7 @@ export function ForgotPasswordPage() {
             Didn't receive the token?{' '}
             <button
               onClick={() => setStep('forgot')}
-              className="text-[var(--primary)] hover:underline font-medium"
+              className="text-[var(--primary)] hover:underline font-bold transition-colors"
             >
               Request again
             </button>

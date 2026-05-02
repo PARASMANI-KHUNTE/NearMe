@@ -29,7 +29,11 @@ type ForgotPasswordSchema = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordSchema = z.infer<typeof resetPasswordSchema>;
 
 const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation, route }) => {
-  const { forgotPassword, resetPassword, isLoading, error, clearError } = useAuthStore();
+  const forgotPassword = useAuthStore((state) => state.forgotPassword);
+  const resetPassword = useAuthStore((state) => state.resetPassword);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
   const resetTokenFromRoute = route.params?.token;
   const [step, setStep] = useState<'forgot' | 'reset'>(resetTokenFromRoute ? 'reset' : 'forgot');
   const [userEmail, setUserEmail] = useState('');

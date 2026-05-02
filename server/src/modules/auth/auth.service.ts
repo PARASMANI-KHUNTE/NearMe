@@ -46,7 +46,7 @@ export class AuthService {
     });
 
     const token = this.generateToken(user._id.toString());
-    
+
     // Remove password from returned user object
     const userObj = user.toObject();
     delete (userObj as any).password;
@@ -68,7 +68,7 @@ export class AuthService {
     }
 
     const token = this.generateToken(user._id.toString());
-    
+
     const userObj = user.toObject();
     delete (userObj as any).password;
 
@@ -112,7 +112,7 @@ export class AuthService {
     await user.save();
 
     const newToken = this.generateToken(user._id.toString());
-    
+
     const userObj = user.toObject();
     delete (userObj as any).password;
 
@@ -142,10 +142,24 @@ export class AuthService {
     let user = await User.findOne({ email });
 
     if (user) {
-      // If user exists but doesn't have googleId linked, link it
+      let shouldSave = false;
+
       if (!user.googleId) {
         user.googleId = googleId;
-        if (picture && !user.picture) user.picture = picture;
+        shouldSave = true;
+      }
+
+      if (picture && user.picture !== picture) {
+        user.picture = picture;
+        shouldSave = true;
+      }
+
+      if (name && user.name !== name) {
+        user.name = name;
+        shouldSave = true;
+      }
+
+      if (shouldSave) {
         await user.save();
       }
     } else {
@@ -166,7 +180,13 @@ export class AuthService {
     }
 
     const token = this.generateToken(user._id.toString());
-    return { user, token };
+
+    // Convert to plain object like other auth methods
+    const userObj = typeof (user as any).toObject === 'function'
+      ? (user as any).toObject()
+      : user;
+
+    return { user: userObj as IUser, token };
   }
 
   private static generateToken(userId: string): string {

@@ -9,30 +9,18 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://nearme-rho.vercel.app/api",
-        "EXPO_PUBLIC_SOCKET_URL": "https://nearme-rho.vercel.app"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://nearme-rho.vercel.app/api",
-        "EXPO_PUBLIC_SOCKET_URL": "https://nearme-rho.vercel.app"
       }
     },
     "production": {
       "android": {
         "buildType": "apk",
         "image": "latest"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://nearme-rho.vercel.app/api",
-        "EXPO_PUBLIC_SOCKET_URL": "https://nearme-rho.vercel.app"
       }
     }
   },

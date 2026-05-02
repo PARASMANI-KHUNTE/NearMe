@@ -1,7 +1,64 @@
-const appJson = require('./app.json');
 const os = require('os');
 
-const expoConfig = appJson.expo ?? {};
+const expoConfig = {
+  name: 'nearme',
+  slug: 'nearme',
+  version: '1.0.0',
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'dark',
+  splash: {
+    image: './assets/splash-icon.png',
+    resizeMode: 'contain',
+    backgroundColor: '#0F172A',
+  },
+  updates: {
+    enabled: true,
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+  },
+  scheme: 'nearme',
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.parasmani.nearme',
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      monochromeImage: './assets/adaptive-icon-monochrome.png',
+      backgroundColor: '#0F172A',
+    },
+    package: 'com.parasmani.nearme',
+  },
+  web: {
+    favicon: './assets/favicon.png',
+  },
+  plugins: [
+    'expo-secure-store',
+    'expo-updates',
+    'expo-font',
+    'expo-web-browser',
+  ],
+  extra: {
+    eas: {
+      projectId: '39e48b99-60c0-4676-b094-68a2159c9460',
+    },
+  },
+};
+const baseSchemes = Array.isArray(expoConfig.scheme)
+  ? expoConfig.scheme
+  : expoConfig.scheme
+    ? [expoConfig.scheme]
+    : [];
+const generatedSchemes = [
+  ...baseSchemes,
+  expoConfig.android?.package,
+  expoConfig.ios?.bundleIdentifier,
+].filter(Boolean);
+const scheme = [...new Set(generatedSchemes)];
 
 const isPrivateIpv4 = (address) =>
   /^10\./.test(address) ||
@@ -60,6 +117,7 @@ const serverIp = getLocalServerIp() ?? expoConfig.extra?.serverIp;
 module.exports = {
   expo: {
     ...expoConfig,
+    ...(scheme.length ? { scheme } : {}),
     extra: {
       ...expoConfig.extra,
       ...(serverIp ? { serverIp } : {}),

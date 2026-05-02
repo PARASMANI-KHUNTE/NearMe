@@ -38,6 +38,7 @@ const FriendsScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -61,6 +62,8 @@ const FriendsScreen = () => {
         ...friend,
         status: statusMap.get(friend.id || friend._id || '') || 'offline',
       })));
+      // Clear failed images when friends list refreshes
+      setFailedImages(new Set());
     } catch (err: any) {
       console.error('Load friends error:', err);
     } finally {
@@ -73,6 +76,8 @@ const FriendsScreen = () => {
     try {
       const data = await FriendService.getPendingRequests();
       setPendingRequests(data);
+      // Clear failed images for request avatars
+      setFailedImages(new Set());
     } catch (err: any) {
       console.error('Load pending requests error:', err);
     }
@@ -153,8 +158,16 @@ const FriendsScreen = () => {
   };
 
   const renderAvatar = (name: string, picture?: string) => {
-    if (picture) {
-      return <Image source={{ uri: picture }} style={styles.avatarImg} />;
+    if (picture && !failedImages.has(picture)) {
+      return (
+        <Image
+          source={{ uri: picture }}
+          style={styles.avatarImg}
+          onError={() => {
+            setFailedImages(prev => new Set([...prev, picture]));
+          }}
+        />
+      );
     }
     return (
       <View style={styles.avatarPlaceholder}>
@@ -257,8 +270,8 @@ const FriendsScreen = () => {
                 tab === 'friends'
                   ? 'people-outline'
                   : tab === 'requests'
-                  ? 'notifications-outline'
-                  : 'search-outline'
+                    ? 'notifications-outline'
+                    : 'search-outline'
               }
               size={16}
               color={activeTab === tab ? theme.colors.primary : theme.colors.border}

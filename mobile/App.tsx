@@ -10,11 +10,11 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const defaultErrorHandler = ErrorUtils.getGlobalHandler();
 ErrorUtils.setGlobalHandler((error, isFatal) => {
-  console.error("Global Error Caught:", error);
-  if (__DEV__) {
+  console.error('Global Error Caught:', error);
+  if (__DEV__ || isFatal) {
     defaultErrorHandler(error, isFatal);
+    return;
   }
-  // In production, we prevent the fatal crash here and let ErrorBoundary or nothing handle it if possible.
 });
 
 // Required for expo-auth-session to close the auth popup

@@ -2,8 +2,7 @@ import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 
 import { env } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-
-const TOKEN_KEY = 'auth_token';
+import { clearStoredAuth, getStoredToken } from './authStorage';
 const OFFLINE_QUEUE_KEY = 'offline_queue';
 
 interface QueuedRequest {
@@ -42,7 +41,7 @@ class ApiService {
     this.api.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
         try {
-          const token = await AsyncStorage.getItem(TOKEN_KEY);
+          const token = await getStoredToken();
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
           }
@@ -63,8 +62,7 @@ class ApiService {
         // Handle 401 errors
         if (error.response?.status === 401) {
           // Token expired or invalid
-          await AsyncStorage.removeItem(TOKEN_KEY);
-          await AsyncStorage.removeItem('auth_user');
+          await clearStoredAuth();
           try {
             const { useAuthStore } = await import('../store/authStore');
             await useAuthStore.getState().logout();

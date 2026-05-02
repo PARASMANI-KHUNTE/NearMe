@@ -19,18 +19,21 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={handleToggle}
-      className="relative w-14 h-8 rounded-full bg-surface border border-border transition-all duration-300 hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 overflow-hidden"
+      className="relative w-14 h-8 rounded-full bg-[var(--surface)] border border-[var(--border)] transition-all duration-300 hover:border-[var(--primary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--background)] overflow-hidden"
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      aria-pressed={theme === 'light'}
     >
       {/* Track */}
       <span className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20" />
-      
+
       {/* Thumb */}
       <span
-        className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-primary shadow-md transition-all duration-300 flex items-center justify-center z-10 ${
+        className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-[var(--primary)] shadow-md transition-all duration-300 flex items-center justify-center z-10 ${
           theme === 'light' ? 'translate-x-6' : ''
         } ${isAnimating ? 'scale-110' : 'scale-100'}`}
+        aria-hidden="true"
       >
         {theme === 'dark' ? (
           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">

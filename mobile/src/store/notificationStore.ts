@@ -110,6 +110,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   clearNotifications: () => {
+    socketService.clearSubscriptions();
     set({ notifications: [], unreadCount: 0, hasInitializedSocketListeners: false });
   },
 

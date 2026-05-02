@@ -1,14 +1,20 @@
 import React, { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
-import Constants from 'expo-constants';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/authStore';
 import type { SignupScreenProps } from '../../navigation/types';
 import { AuthLayout } from '../../components/auth/AuthLayout';
+import {
+  configureNativeGoogleSignIn,
+  getGoogleRedirectUri,
+  getMissingGoogleClientIdMessage,
+  googleAuthConfig,
+  shouldUseNativeGoogleSignIn,
+} from '../../config/googleAuth';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -27,25 +33,27 @@ const signupSchema = z.object({
 type SignupSchema = z.infer<typeof signupSchema>;
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
-  const { login, registerWithEmail, isLoading, error, clearError } = useAuthStore();
+  const login = useAuthStore((state) => state.login);
+  const registerWithEmail = useAuthStore((state) => state.registerWithEmail);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
   const { control, handleSubmit, formState: { errors } } = useForm<SignupSchema>({
     resolver: zodResolver(signupSchema),
   });
 
-  // Google OAuth setup
-  const isExpoGo = Constants.executionEnvironment === 'storeClient';
-  
-  const redirectUri = isExpoGo
-    ? 'https://auth.expo.io/@parasmani/nearme'
-    : AuthSession.makeRedirectUri({
-        native: 'nearme:/oauth2redirect',
-      });
+  useEffect(() => {
+    configureNativeGoogleSignIn();
+  }, []);
+
+  const redirectUri = getGoogleRedirectUri();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID || '',
-    androidClientId: process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
-    redirectUri,
+    clientId: googleAuthConfig.clientId,
+    androidClientId: googleAuthConfig.androidClientId,
+    iosClientId: googleAuthConfig.iosClientId,
+    expoClientId: googleAuthConfig.expoClientId,
+    ...(redirectUri ? { redirectUri } : {}),
   } as any);
 
   // Handle OAuth response
@@ -82,7 +90,63 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
 
   const handleGooglePress = () => {
     clearError();
+    const missingClientIdMessage = getMissingGoogleClientIdMessage();
+    if (missingClientIdMessage) {
+      Alert.alert('Google Sign-In Configuration', missingClientIdMessage);
+      return;
+    }
+
+    if (shouldUseNativeGoogleSignIn) {
+      void handleNativeGoogleSignIn();
+      return;
+    }
+
     promptAsync({ showTitle: true });
+  };
+
+  const handleNativeGoogleSignIn = async () => {
+    const {
+      GoogleSignin,
+      isCancelledResponse,
+      isErrorWithCode,
+      isSuccessResponse,
+      statusCodes,
+    } = require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+      console.log('[GoogleSignIn][Signup] signIn result', result);
+
+      if (isCancelledResponse(result)) {
+        return;
+      }
+
+      if (!isSuccessResponse(result)) {
+        throw new Error('Google Sign-In did not complete successfully.');
+      }
+
+      const signInToken = result.data.idToken;
+      const tokenResponse = signInToken ? null : await GoogleSignin.getTokens();
+      const idToken = signInToken || tokenResponse?.idToken;
+
+      if (!idToken) {
+        throw new Error('Google Sign-In did not return an ID token.');
+      }
+
+      await handleGoogleLogin(idToken);
+    } catch (err) {
+      console.log('[GoogleSignIn][Signup] native sign-in failed', err);
+      if (isErrorWithCode(err)) {
+        if (err.code === statusCodes.IN_PROGRESS || err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          Alert.alert('Google Sign-In', err.message);
+          return;
+        }
+      }
+
+      const message = err instanceof Error ? err.message : 'Google Sign-In failed';
+      Alert.alert('Google Sign-In', message);
+    }
   };
 
   return (
@@ -91,7 +155,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
       primaryLabel="Sign Up"
       onPrimaryPress={handleSubmit(onSubmit)}
       onGooglePress={handleGooglePress}
-      googleDisabled={!request}
+      googleDisabled={!request || !!getMissingGoogleClientIdMessage()}
       isLoading={isLoading}
       errorMessage={error}
       footerText="Already have an account?"

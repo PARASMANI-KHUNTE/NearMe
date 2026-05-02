@@ -2,8 +2,9 @@ import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useFriendStore } from '../store/friendStore';
+import { env } from '../config/env';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = env.socketUrl;
 
 let socket: Socket | null = null;
 type FriendRequestSocketPayload = {

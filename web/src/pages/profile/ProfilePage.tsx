@@ -63,15 +63,22 @@ export function ProfilePage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Profile Card */}
         <div className="lg:col-span-1 space-y-6">
           <Card variant="glass" className="text-center p-6">
             <div className="relative inline-block">
               <img
-                src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name}&background=f59e0b&color=fff&size=128`}
-                alt=""
+                src={user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=f59e0b&color=fff&size=128`}
+                alt={user?.name || 'User profile'}
                 className="w-24 h-24 rounded-2xl mx-auto object-cover ring-4 ring-[var(--primary)]/20"
+                onError={(e) => {
+                  // If the image fails to load (e.g., Google picture URL broken), fallback to avatar
+                  const target = e.currentTarget;
+                  if (!target.src.includes('ui-avatars.com')) {
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=f59e0b&color=fff&size=128`;
+                  }
+                }}
               />
             </div>
             <div className="mt-4">
@@ -107,8 +114,8 @@ export function ProfilePage() {
             Share NearMe ID
           </Button>
 
-          <Button 
-            variant="glass" 
+          <Button
+            variant="glass"
             className="w-full text-error hover:bg-error/10"
             onClick={handleLogout}
           >
@@ -123,7 +130,7 @@ export function ProfilePage() {
         <div className="lg:col-span-2 space-y-6">
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-[var(--text)] mb-6">Settings</h2>
-            
+
             <div className="space-y-6">
               <Toggle
                 label="Share My Location"

@@ -184,6 +184,49 @@ describe('AuthService', () => {
       expect(result.token).toBeDefined();
     });
 
+    test('should update existing user picture and googleId from Google login', async () => {
+      const mockPayload = {
+        sub: 'google123',
+        email: 'google@example.com',
+        name: 'Google User',
+        picture: 'https://example.com/new-picture.jpg',
+      };
+
+      const save = jest.fn().mockResolvedValue(undefined);
+      const mockUser = {
+        _id: 'user123',
+        googleId: undefined,
+        email: mockPayload.email,
+        name: 'Old Name',
+        picture: undefined,
+        save,
+        toObject: () => ({
+          _id: 'user123',
+          googleId: mockPayload.sub,
+          email: mockPayload.email,
+          name: mockPayload.name,
+          picture: mockPayload.picture,
+        }),
+      };
+
+      const mockTicket = {
+        getPayload: () => mockPayload,
+      };
+
+      const { OAuth2Client } = require('google-auth-library');
+      OAuth2Client.prototype.verifyIdToken = jest.fn().mockResolvedValue(mockTicket);
+
+      (User.findOne as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await AuthService.verifyGoogleTokenAndLogin('valid-token');
+
+      expect(mockUser.googleId).toBe(mockPayload.sub);
+      expect(mockUser.name).toBe(mockPayload.name);
+      expect(mockUser.picture).toBe(mockPayload.picture);
+      expect(save).toHaveBeenCalled();
+      expect(result.user.picture).toBe(mockPayload.picture);
+    });
+
     test('should create new user for Google login if not exists', async () => {
       const mockPayload = {
         sub: 'google123',
