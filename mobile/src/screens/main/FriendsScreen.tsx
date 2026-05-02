@@ -40,6 +40,7 @@ const FriendsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [proximityConsent, setProximityConsent] = useState<Record<string, boolean>>({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -158,6 +159,19 @@ const FriendsScreen = () => {
     }
   };
 
+  const handleToggleProximity = async (friendId: string) => {
+    const current = proximityConsent[friendId] ?? true;
+    const next = !current;
+    setProximityConsent(prev => ({ ...prev, [friendId]: next }));
+    try {
+      const { api } = await import('../../services/api');
+      await api.patch(`/friends/${friendId}/proximity`, { enabled: next });
+    } catch {
+      setProximityConsent(prev => ({ ...prev, [friendId]: current }));
+      Alert.alert('Error', 'Failed to update proximity setting');
+    }
+  };
+
   const renderAvatar = (name: string, picture?: string) => {
     if (picture && !failedImages.has(picture)) {
       return (
@@ -177,20 +191,33 @@ const FriendsScreen = () => {
     );
   };
 
-  const renderFriend = ({ item }: { item: FriendWithStatus }) => (
+  const renderFriend = ({ item }: { item: FriendWithStatus }) => {
+    const hasProximity = proximityConsent[item.id || item._id || ''] ?? true;
+    return (
     <View style={styles.friendRow}>
       {renderAvatar(item.name, item.picture)}
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
         <Text style={styles.friendEmail}>{item.email}</Text>
       </View>
+      <TouchableOpacity
+        style={[styles.proximityBtn, hasProximity ? styles.proximityBtnOn : styles.proximityBtnOff]}
+        onPress={() => handleToggleProximity(item.id || item._id || '')}
+      >
+        <Ionicons
+          name={hasProximity ? 'location-outline' : 'ban-outline'}
+          size={16}
+          color={hasProximity ? theme.colors.secondary : theme.colors.border}
+        />
+      </TouchableOpacity>
       <View style={[styles.statusDot, item.status === 'nearby' ? styles.dotNearby : styles.dotOffline]}>
         <Text style={[styles.statusText, item.status === 'nearby' ? styles.textNearby : styles.textOffline]}>
           {item.status?.toUpperCase() || 'OFFLINE'}
         </Text>
       </View>
     </View>
-  );
+    );
+  };
 
   const renderRequest = ({ item }: { item: FriendRequest }) => (
     <View style={styles.requestRow}>
@@ -563,6 +590,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(56,189,248,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(56,189,248,0.3)',
+  },
+  proximityBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  proximityBtnOn: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+  },
+  proximityBtnOff: {
+    backgroundColor: 'rgba(100,116,139,0.15)',
+    borderColor: 'rgba(100,116,139,0.3)',
   },
   emptyState: {
     alignItems: 'center',

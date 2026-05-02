@@ -39,7 +39,7 @@ export const initSocket = (server: HttpServer) => {
 
       socket.data.user = user;
       next();
-    } catch (err) {
+    } catch {
       next(new Error('Authentication error: Invalid token'));
     }
   });

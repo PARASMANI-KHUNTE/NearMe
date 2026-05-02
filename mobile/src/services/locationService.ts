@@ -16,7 +16,7 @@ export interface LocationUpdateResponse {
 
 export class LocationService {
   private static locationSubscription: Location.LocationSubscription | null = null;
-  private static updateInterval: number = 60000; // 60 seconds default
+  private static updateInterval: number = 45000; // 45 seconds default
 
   static async getForegroundPermissionStatus(): Promise<Location.PermissionStatus> {
     const { status } = await Location.getForegroundPermissionsAsync();

@@ -12,7 +12,6 @@ const testUserEmail = `test-${Date.now()}@nearme-test.com`;
 const testUserName = 'E2E Test User';
 const testUserPassword = 'TestPass123';
 let authToken = '';
-let userId = '';
 
 // Color helpers
 const GREEN = '\x1b[32m';
@@ -112,7 +111,6 @@ async function run() {
         if (!data?.success) throw new Error(data?.message || `Status ${res.status}`);
         if (!data.data?.token) throw new Error('No token returned');
         authToken = data.data.token;
-        userId = data.data.user?.id || data.data.user?._id || '';
         info(`User created: ${testUserEmail}`);
         return;
       } catch (err: unknown) {

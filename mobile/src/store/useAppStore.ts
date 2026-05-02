@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { logger } from '../utils/logger';
 
 interface User {
   id: string;
@@ -65,10 +66,9 @@ const storage = {
   setItem: async (name: string, value: string) => {
     try {
       await AsyncStorage.setItem(name, value);
-    } catch (e) {
+      } catch (e) {
       // avoid noisy logs in production
-      // eslint-disable-next-line no-console
-      console.warn('[Storage] setItem failed:', name);
+      logger.warn('[Storage] setItem failed:', name);
     }
   },
   removeItem: async (name: string) => {
@@ -76,7 +76,7 @@ const storage = {
       await AsyncStorage.removeItem(name);
     } catch {
       // eslint-disable-next-line no-console
-      console.warn('[Storage] removeItem failed:', name);
+      logger.warn('[Storage] removeItem failed:', name);
     }
   },
 };

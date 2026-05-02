@@ -1,6 +1,8 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { logger } from '../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -36,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   handleReset = () => {

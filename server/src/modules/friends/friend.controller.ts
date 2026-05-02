@@ -157,4 +157,33 @@ export class FriendController {
       });
     }
   }
+
+  static async updateProximityConsent(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user._id.toString();
+      const friendId = req.params.friendId as string;
+      const { enabled } = req.body;
+
+      if (typeof enabled !== 'boolean') {
+        res.status(400).json({
+          success: false,
+          message: 'enabled must be a boolean',
+        });
+        return;
+      }
+
+      const updated = await FriendService.updateProximityConsent(userId, friendId, enabled);
+
+      res.status(200).json({
+        success: true,
+        data: updated,
+        message: 'Proximity consent updated',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error updating proximity consent',
+      });
+    }
+  }
 }

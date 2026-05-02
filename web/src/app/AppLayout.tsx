@@ -18,6 +18,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useLocationTracker } from '../hooks/useLocationTracker';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { AudioNotificationHandler } from '../components/AudioNotificationHandler';
+import { WebNotificationHandler } from '../components/WebNotificationHandler';
 import { NearMeLogo } from '../components/branding/NearMeLogo';
 
 const navLinks = [
@@ -87,6 +88,7 @@ function AppLayout() {
     <div className="min-h-screen bg-[var(--background)] flex relative">
       <div className="mesh-bg opacity-20" />
       <AudioNotificationHandler />
+      <WebNotificationHandler />
 
       {/* Mobile Header */}
       {isMobile && (

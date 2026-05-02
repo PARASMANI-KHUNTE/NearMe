@@ -6,6 +6,8 @@ export interface IFriendRequest extends Document {
   requesterId: Types.ObjectId;
   recipientId: Types.ObjectId;
   status: RequestStatus;
+  requesterProximityConsent: boolean;
+  recipientProximityConsent: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +21,8 @@ const FriendRequestSchema = new Schema<IFriendRequest>(
       enum: ['pending', 'accepted', 'rejected'],
       default: 'pending',
     },
+    requesterProximityConsent: { type: Boolean, default: true },
+    recipientProximityConsent: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

@@ -1,5 +1,6 @@
 import { Location } from '../location/location.model';
 import { FriendService } from '../friends/friend.service';
+import { FriendRequest } from '../friends/friend-request.model';
 import { NotificationService } from '../notifications/notification.service';
 import { User } from '../users/user.model';
 import { getRedis } from '../../shared/redis/connection';
@@ -46,6 +47,12 @@ export class ProximityService {
       const friend = friendsMap.get(friendId);
       if (!friend) continue;
 
+      const hasMutualConsent = await ProximityService.hasProximityConsent(userId, friendId);
+      if (!hasMutualConsent) {
+        logger.debug({ userId, friendId }, 'Proximity skipped - mutual consent missing');
+        continue;
+      }
+
       const friendRadius = friend.settings?.radius || 5000;
       const distance = ProximityService.calculateApproxDistance(
         coordinates,
@@ -56,6 +63,19 @@ export class ProximityService {
         await ProximityService.triggerProximityAlert(userId, friendId, distance);
       }
     }
+  }
+
+  private static async hasProximityConsent(userA: string, userB: string): Promise<boolean> {
+    const request = await FriendRequest.findOne({
+      $or: [
+        { requesterId: userA, recipientId: userB },
+        { requesterId: userB, recipientId: userA },
+      ],
+      status: 'accepted',
+    });
+
+    if (!request) return false;
+    return request.requesterProximityConsent && request.recipientProximityConsent;
   }
 
   static async triggerProximityAlert(userA: string, userB: string, distance: number): Promise<void> {

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '../store/notificationStore';
+import { logger } from '../utils/logger';
 
 export function AudioNotificationHandler() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -22,7 +23,7 @@ export function AudioNotificationHandler() {
     if (latestNotification?.type === 'proximity_alert' && audioRef.current && !muteNotifications) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(err => {
-        console.log('Audio play failed (user interaction required):', err);
+        logger.info('Audio play failed (user interaction required):', err);
       });
     }
   }, [notifications, muteNotifications]);

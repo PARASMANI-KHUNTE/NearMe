@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 // Google Auth Service for Web
 declare global {
@@ -81,7 +82,7 @@ export class GoogleAuthService {
         await window.handleGoogleCredential(idToken);
       }
     } catch (error) {
-      console.error('Google auth error:', error);
+      logger.error('Google auth error:', error);
     }
   }
 

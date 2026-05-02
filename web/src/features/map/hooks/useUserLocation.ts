@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { GeoPosition } from '../../../types';
+import { logger } from '../../../utils/logger';
 
 export function useUserLocation() {
   const [location, setLocation] = useState<GeoPosition | null>(null);
@@ -46,7 +47,9 @@ export function useUserLocation() {
           lng: position.coords.longitude,
         });
       },
-      (err) => console.error('Watch error:', err),
+      (err) => {
+        logger.error('Watch error:', err);
+      },
       { enableHighAccuracy: false, maximumAge: 30000 }
     );
 

@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -145,7 +146,7 @@ class ApiService {
           config._retryCount = (config._retryCount || 0) + 1;
 
           const delay = this.retryDelay * Math.pow(2, config._retryCount - 1);
-          console.log(`Retrying request (${config._retryCount}/${this.maxRetries}) after ${delay}ms`);
+          logger.info(`Retrying request (${config._retryCount}/${this.maxRetries}) after ${delay}ms`);
 
           return new Promise((resolve) =>
             setTimeout(() => resolve(this.api.request(config)), delay)
@@ -154,7 +155,7 @@ class ApiService {
 
         // Handle offline scenario
         if (!this.isOnline && this.canQueueRequest(config)) {
-          console.log('Device offline, queuing request');
+          logger.info('Device offline, queuing request');
           await this.queueRequest(config);
           return Promise.reject(new Error('Device offline - request queued'));
         }
@@ -167,7 +168,7 @@ class ApiService {
   private setupNetworkListener() {
     window.addEventListener('online', () => {
       this.isOnline = true;
-      console.log('Network status changed: online');
+      logger.info('Network status changed: online');
 
       if (this.offlineQueue.length > 0) {
         this.processOfflineQueue();
@@ -176,7 +177,7 @@ class ApiService {
 
     window.addEventListener('offline', () => {
       this.isOnline = false;
-      console.log('Network status changed: offline');
+      logger.info('Network status changed: offline');
     });
   }
 
@@ -216,7 +217,7 @@ class ApiService {
     }
 
     this.isProcessingQueue = true;
-    console.log(`Processing ${this.offlineQueue.length} queued requests`);
+    logger.info(`Processing ${this.offlineQueue.length} queued requests`);
 
     const failedRequests: QueuedRequest[] = [];
 
@@ -224,7 +225,7 @@ class ApiService {
       try {
         await this.executeRequest(request);
       } catch (error) {
-        console.error('Failed to process queued request:', request.id, error);
+        logger.error('Failed to process queued request:', request.id, error);
         failedRequests.push(request);
       }
     }
@@ -233,7 +234,7 @@ class ApiService {
     this.saveOfflineQueue();
     this.isProcessingQueue = false;
 
-    console.log(`Queue processing complete. ${failedRequests.length} requests remain queued`);
+    logger.info(`Queue processing complete. ${failedRequests.length} requests remain queued`);
   }
 
   private async executeRequest(request: QueuedRequest): Promise<unknown> {
@@ -253,7 +254,7 @@ class ApiService {
     try {
       localStorage.setItem('offline_queue', JSON.stringify(this.offlineQueue));
     } catch (error) {
-      console.error('Failed to save offline queue:', error);
+      logger.error('Failed to save offline queue:', error);
     }
   }
 
@@ -262,10 +263,10 @@ class ApiService {
       const queueData = localStorage.getItem('offline_queue');
       if (queueData) {
         this.offlineQueue = JSON.parse(queueData);
-        console.log(`Loaded ${this.offlineQueue.length} queued requests`);
+        logger.info(`Loaded ${this.offlineQueue.length} queued requests`);
       }
     } catch (error) {
-      console.error('Failed to load offline queue:', error);
+      logger.error('Failed to load offline queue:', error);
     }
   }
 

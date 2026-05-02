@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useFriendStore } from '../store/friendStore';
+import { logger } from '../utils/logger';
 
 type SocketCallback = (data: unknown) => void;
 type FriendRequestSocketPayload = {
@@ -36,15 +37,15 @@ export const socketService = {
     });
 
     socket.on('connect', () => {
-      console.log('Socket connected:', socket?.id);
+      logger.info('Socket connected:', socket?.id);
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+      logger.info('Socket disconnected:', reason);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error.message);
+      logger.error('Socket connection error:', error.message);
     });
 
     // Real-time events
@@ -58,7 +59,7 @@ export const socketService = {
       distance?: number;
       createdAt?: string;
     }) => {
-      console.log('Proximity alert:', data);
+      logger.info('Proximity alert:', data);
       
       useNotificationStore.getState().addNotification({
         id: data.id || data._id || `proximity-${Date.now()}`,
@@ -73,7 +74,7 @@ export const socketService = {
     });
 
     socket.on('friend_request', (data: FriendRequestSocketPayload) => {
-      console.log('Friend request received:', data);
+      logger.info('Friend request received:', data);
 
       const metadata = data.metadata || {};
       const from = metadata.from;
@@ -81,7 +82,7 @@ export const socketService = {
       const requesterId = from?.id || from?._id || data.senderId;
 
       if (!requestId || !requesterId || !from?.name) {
-        console.warn('Friend request payload missing required fields, emitting raw data');
+        logger.warn('Friend request payload missing required fields, emitting raw data');
         this.emitLocal('friend_request', data);
         return;
       }
@@ -106,7 +107,7 @@ export const socketService = {
       id: string; 
       user: { id: string; name: string; picture?: string };
     }) => {
-      console.log('Request accepted:', data);
+      logger.info('Request accepted:', data);
       
       useFriendStore.getState().addFriend({
         id: data.user.id,
@@ -122,7 +123,7 @@ export const socketService = {
       friendId: string; 
       status: 'nearby' | 'offline';
     }) => {
-      console.log('Friend nearby status:', data);
+      logger.info('Friend nearby status:', data);
       
       const friends = useFriendStore.getState().friends;
       const updatedFriends = friends.map(f => 

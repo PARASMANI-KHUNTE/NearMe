@@ -8,13 +8,16 @@ import {
   Check,
   X,
   MessageCircle,
-  ShieldAlert
+  ShieldAlert,
+  MapPin,
+  MapPinOff
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useFriendStore } from '../../store/friendStore';
 import { api } from '../../services/api';
 import type { PendingRequest } from '../../types';
+import { logger } from '../../utils/logger';
 
 interface SearchResult {
   id: string;
@@ -37,6 +40,7 @@ export function FriendsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [proximityConsent, setProximityConsent] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -59,7 +63,7 @@ export function FriendsPage() {
           setRequests(requestsRes.data.data);
         }
       } catch (error) {
-        console.error('Failed to load data:', error);
+        logger.error('Failed to load data:', error);
       }
     };
 
@@ -76,7 +80,7 @@ export function FriendsPage() {
       });
       setSearchResults(response.data.data || []);
     } catch (error) {
-      console.error('Search failed:', error);
+      logger.error('Search failed:', error);
       setSearchResults([]);
     } finally {
       setIsLoading(false);
@@ -90,7 +94,7 @@ export function FriendsPage() {
       setSearchQuery('');
       setShowResults(false);
     } catch (error) {
-      console.error('Failed to send friend request:', error);
+      logger.error('Failed to send friend request:', error);
     }
   };
 
@@ -108,7 +112,7 @@ export function FriendsPage() {
       // Remove from requests
       setRequests(requests.filter((r) => r._id !== requestId));
     } catch (error) {
-      console.error('Failed to accept request:', error);
+      logger.error('Failed to accept request:', error);
     }
   };
 
@@ -117,7 +121,7 @@ export function FriendsPage() {
       await api.post(`/api/friends/request/${requestId}/reject`);
       setRequests(requests.filter((r) => r._id !== requestId));
     } catch (error) {
-      console.error('Failed to reject request:', error);
+      logger.error('Failed to reject request:', error);
     }
   };
 
@@ -126,7 +130,19 @@ export function FriendsPage() {
       await api.delete(`/api/friends/${userId}`);
       removeFriend(userId);
     } catch (error) {
-      console.error('Failed to remove friend:', error);
+      logger.error('Failed to remove friend:', error);
+    }
+  };
+
+  const handleToggleProximity = async (friendId: string) => {
+    const current = proximityConsent[friendId] ?? true;
+    const next = !current;
+    setProximityConsent(prev => ({ ...prev, [friendId]: next }));
+    try {
+      await api.patch(`/api/friends/${friendId}/proximity`, { enabled: next });
+    } catch (error) {
+      setProximityConsent(prev => ({ ...prev, [friendId]: current }));
+      logger.error('Failed to update proximity consent:', error);
     }
   };
 
@@ -292,7 +308,9 @@ export function FriendsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {friends.map((friend) => (
+                {friends.map((friend) => {
+                  const hasProximity = proximityConsent[friend.id] ?? true;
+                  return (
                   <motion.div
                     layout
                     key={friend.id}
@@ -327,7 +345,23 @@ export function FriendsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleProximity(friend.id)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                          hasProximity
+                            ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                            : 'bg-[var(--text-muted)]/10 text-[var(--text-muted)] hover:bg-[var(--text-muted)]/20'
+                        }`}
+                        title={hasProximity ? 'Proximity alerts enabled' : 'Proximity alerts disabled'}
+                      >
+                        {hasProximity ? (
+                          <MapPin className="w-3.5 h-3.5" />
+                        ) : (
+                          <MapPinOff className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden sm:inline">{hasProximity ? 'Nearby' : 'Muted'}</span>
+                      </button>
                       <Button variant="glass" size="sm" className="w-10 h-10 p-0 rounded-xl">
                         <MessageCircle className="w-4 h-4" />
                       </Button>
@@ -341,7 +375,8 @@ export function FriendsPage() {
                       </Button>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>

@@ -37,7 +37,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
     req.user = user;
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ success: false, message: 'Unauthorized - Invalid token' });
   }
 };

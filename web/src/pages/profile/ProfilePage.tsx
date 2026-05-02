@@ -9,6 +9,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { socketService } from '../../services/socketService';
 import { authService } from '../../services/authService';
 import { api } from '../../services/api';
+import { logger } from '../../utils/logger';
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export function ProfilePage() {
           setUniqueId(response.data.data.uniqueId);
         }
       } catch (error) {
-        console.error('Failed to fetch share profile:', error);
+        logger.error('Failed to fetch share profile:', error);
       }
     };
     fetchShareProfile();

@@ -3,6 +3,10 @@ import { useLocationStore } from '../store/locationStore';
 import { useFriendStore } from '../store/friendStore';
 import { locationService, geoService } from '../services/locationService';
 import { socketService } from '../services/socketService';
+import { logger } from '../utils/logger';
+
+const LOCATION_UPDATE_INTERVAL = 45000; // 45 seconds
+const MIN_DISTANCE_THRESHOLD = 50; // 50 meters
 
 interface LocationState {
   loading: boolean;
@@ -23,30 +27,51 @@ export function useLocationTracker() {
   
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastPositionRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
-  const updateLocation = useCallback(async () => {
+  const shouldUpdate = useCallback((lat: number, lng: number): boolean => {
+    if (!lastPositionRef.current) return true;
+    const { latitude, longitude } = lastPositionRef.current;
+    const dLat = lat - latitude;
+    const dLng = lng - longitude;
+    const distance = Math.sqrt(dLat * dLat + dLng * dLng) * 111000;
+    return distance >= MIN_DISTANCE_THRESHOLD;
+  }, []);
+
+  const updateLocation = useCallback(async (position?: { latitude: number; longitude: number }) => {
     if (!shareLocation) {
       setState(prev => ({ ...prev, isTracking: false, loading: false }));
       return;
     }
 
     try {
-      const position = await geoService.getCurrentPosition();
-      
-      // Send to backend
+      let lat: number, lng: number;
+      if (position) {
+        lat = position.latitude;
+        lng = position.longitude;
+      } else {
+        const pos = await geoService.getCurrentPosition();
+        lat = pos.latitude;
+        lng = pos.longitude;
+      }
+
+      if (!shouldUpdate(lat, lng)) {
+        socketService.sendLocation(lat, lng, radius);
+        return;
+      }
+
+      lastPositionRef.current = { latitude: lat, longitude: lng };
+
       await locationService.updateLocation({
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitude: lat,
+        longitude: lng,
         radius,
       });
 
-      // Send to socket for real-time
-      socketService.sendLocation(position.latitude, position.longitude, radius);
+      socketService.sendLocation(lat, lng, radius);
 
-      // Fetch friends location status from server
       const friendsStatus = await locationService.getFriendsLocationStatus();
 
-      // Update friend store with nearby status
       const currentFriends = useFriendStore.getState().friends;
       setFriends(
         currentFriends.map((friend) => {
@@ -66,33 +91,31 @@ export function useLocationTracker() {
         lastUpdate: new Date(),
       }));
     } catch (error: unknown) {
-      console.error('Location error:', error);
+      logger.error('Location error:', error);
       setState(prev => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to get location',
       }));
     }
-  }, [shareLocation, radius, setFriends]);
+  }, [shareLocation, radius, setFriends, shouldUpdate]);
 
   const startTracking = useCallback(() => {
     if (!shareLocation || !navigator.geolocation) return;
 
-    // Initial update
     updateLocation();
 
-    // Setup watch position
     watchIdRef.current = geoService.watchPosition(
       (pos) => {
         socketService.sendLocation(pos.latitude, pos.longitude, radius);
+        lastPositionRef.current = { latitude: pos.latitude, longitude: pos.longitude };
       },
       (error) => {
-        console.error('Watch position error:', error);
+        logger.error('Watch position error:', error);
       }
     );
 
-    // Setup interval for periodic updates (every 30 seconds)
-    intervalRef.current = setInterval(updateLocation, 30000);
+    intervalRef.current = setInterval(() => updateLocation(), LOCATION_UPDATE_INTERVAL);
 
     setState(prev => ({ ...prev, isTracking: true }));
   }, [shareLocation, radius, updateLocation]);
@@ -108,10 +131,10 @@ export function useLocationTracker() {
       intervalRef.current = null;
     }
 
+    lastPositionRef.current = null;
     setState(prev => ({ ...prev, isTracking: false }));
   }, []);
 
-  // Handle shareLocation changes
   useEffect(() => {
     if (shareLocation) {
       startTracking();
@@ -122,7 +145,6 @@ export function useLocationTracker() {
     return () => stopTracking();
   }, [shareLocation, startTracking, stopTracking]);
 
-  // Manual refresh
   const refresh = useCallback(() => {
     setState(prev => ({ ...prev, loading: true }));
     updateLocation();

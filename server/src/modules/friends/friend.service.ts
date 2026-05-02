@@ -94,4 +94,32 @@ export class FriendService {
       throw new Error('Friend not found');
     }
   }
+
+  static async updateProximityConsent(
+    userId: string,
+    friendId: string,
+    enabled: boolean
+  ): Promise<{ proximityEnabled: boolean }> {
+    const request = await FriendRequest.findOne({
+      $or: [
+        { requesterId: userId, recipientId: friendId },
+        { requesterId: friendId, recipientId: userId },
+      ],
+      status: 'accepted',
+    });
+
+    if (!request) {
+      throw new Error('Friend relationship not found');
+    }
+
+    if (request.requesterId.toString() === userId) {
+      request.requesterProximityConsent = enabled;
+    } else {
+      request.recipientProximityConsent = enabled;
+    }
+
+    await request.save();
+
+    return { proximityEnabled: request.requesterProximityConsent && request.recipientProximityConsent };
+  }
 }

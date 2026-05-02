@@ -37,8 +37,6 @@ export function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
 
   const urlToken = searchParams.get('token');
-  const urlEmail = searchParams.get('email');
-
   useEffect(() => {
     if (urlToken) {
       setStep('reset');

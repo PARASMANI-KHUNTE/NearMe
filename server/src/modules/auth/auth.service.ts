@@ -220,7 +220,7 @@ export class AuthService {
       const key = `refresh_token:${userId}`;
       const expirySeconds = 7 * 24 * 60 * 60; // 7 days
       await redisClient.set(key, token, { EX: expirySeconds });
-    } catch (error) {
+    } catch {
       // Redis not available, skip storing refresh token
       console.warn('Redis not available, refresh token not stored');
     }

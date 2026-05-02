@@ -94,7 +94,7 @@ const HomeScreen = () => {
   // Start location tracking when sharing is enabled
   useEffect(() => {
     if (shareLocation && token) {
-      LocationService.startLocationUpdates(60000, () => {
+      LocationService.startLocationUpdates(45000, () => {
         fetchNearbyCount();
       }).catch((error) => {
         logger.info('[Home] Location updates skipped:', error.message);

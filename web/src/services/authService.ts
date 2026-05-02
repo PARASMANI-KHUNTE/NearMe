@@ -1,5 +1,6 @@
 import { api, type ApiResponse } from './api';
 import { useAuthStore } from '../store/authStore';
+import { logger } from '../utils/logger';
 
 interface GoogleAuthResponse {
   user: {
@@ -69,7 +70,7 @@ export const authService = {
     try {
       await api.post('/api/auth/logout');
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     } finally {
       useAuthStore.getState().logout();
     }

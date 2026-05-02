@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useFriendStore } from '../store/friendStore';
 import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 const SOCKET_URL = env.socketUrl;
 
@@ -33,20 +34,20 @@ export const connectSocket = () => {
   });
 
   socket.on('connect', () => {
-    console.log('Socket connected:', socket?.id);
+    logger.info('Socket connected:', socket?.id);
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', reason);
+    logger.info('Socket disconnected:', reason);
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
+    logger.error('Socket connection error:', error.message);
   });
 
   // Proximity alert - friend is nearby
   socket.on('proximity_alert', (data: { id?: string; _id?: string; friendId: string; friendName?: string; message?: string; content?: string; createdAt?: string }) => {
-    console.log('Proximity alert:', data);
+    logger.info('Proximity alert:', data);
     useNotificationStore.getState().addNotification({
       id: data.id || data._id || `proximity-${Date.now()}`,
       type: 'proximity_alert',
@@ -58,14 +59,14 @@ export const connectSocket = () => {
 
   // Friend request received
   socket.on('friend_request', (data: FriendRequestSocketPayload) => {
-    console.log('Friend request:', data);
+    logger.info('Friend request:', data);
     const metadata = data.metadata || {};
     const from = metadata.from;
     const requestId = metadata.requestId || data._id || data.id;
     const requesterId = from?.id || from?._id || data.senderId;
 
     if (!requestId || !requesterId || !from?.name) {
-      console.warn('Friend request payload missing required fields');
+      logger.warn('Friend request payload missing required fields');
       return;
     }
 
@@ -85,7 +86,7 @@ export const connectSocket = () => {
 
   // Friend request accepted
   socket.on('request_accepted', (data: { id: string; user: { id: string; name: string; picture?: string } }) => {
-    console.log('Request accepted:', data);
+    logger.info('Request accepted:', data);
     useFriendStore.getState().addFriend({
       id: data.user.id,
       name: data.user.name,
@@ -96,7 +97,7 @@ export const connectSocket = () => {
 
   // Location update from friend
   socket.on('friend_nearby', (data: { friendId: string; status: 'nearby' | 'offline' }) => {
-    console.log('Friend nearby status:', data);
+    logger.info('Friend nearby status:', data);
     const friends = useFriendStore.getState().friends;
     const updatedFriends = friends.map(f => 
       f.id === data.friendId ? { ...f, status: data.status as 'nearby' | 'offline' } : f

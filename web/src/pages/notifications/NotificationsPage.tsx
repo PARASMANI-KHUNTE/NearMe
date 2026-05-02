@@ -3,6 +3,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useNotificationStore } from '../../store/notificationStore';
 import { notificationService } from '../../services/notificationService';
+import { logger } from '../../utils/logger';
 
 export function NotificationsPage() {
   const { notifications, markAsRead, setNotifications } = useNotificationStore();
@@ -43,7 +44,7 @@ export function NotificationsPage() {
       await notificationService.markAsRead(id);
       markAsRead(id);
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      logger.error('Failed to mark as read:', error);
     }
   };
 
@@ -52,7 +53,7 @@ export function NotificationsPage() {
       await notificationService.markAllAsRead();
       setNotifications(notifications.map(n => ({ ...n, read: true })));
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      logger.error('Failed to mark all as read:', error);
     }
   };
 
