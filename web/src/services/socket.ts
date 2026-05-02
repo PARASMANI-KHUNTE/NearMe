@@ -99,7 +99,7 @@ export const connectSocket = () => {
   socket.on('friend_nearby', (data: { friendId: string; status: 'nearby' | 'offline' }) => {
     logger.info('Friend nearby status:', data);
     const friends = useFriendStore.getState().friends;
-    const updatedFriends = friends.map(f => 
+    const updatedFriends = friends.map(f =>
       f.id === data.friendId ? { ...f, status: data.status as 'nearby' | 'offline' } : f
     );
     useFriendStore.getState().setFriends(updatedFriends);

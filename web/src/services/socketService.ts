@@ -49,18 +49,18 @@ export const socketService = {
     });
 
     // Real-time events
-    socket.on('proximity_alert', (data: { 
+    socket.on('proximity_alert', (data: {
       id?: string;
       _id?: string;
-      friendId: string; 
-      friendName?: string; 
+      friendId: string;
+      friendName?: string;
       message?: string;
       content?: string;
       distance?: number;
       createdAt?: string;
     }) => {
       logger.info('Proximity alert:', data);
-      
+
       useNotificationStore.getState().addNotification({
         id: data.id || data._id || `proximity-${Date.now()}`,
         type: 'proximity_alert',
@@ -68,7 +68,7 @@ export const socketService = {
         read: false,
         createdAt: data.createdAt || new Date().toISOString(),
       });
-      
+
       // Notify listeners
       this.emitLocal('proximity_alert', data);
     });
@@ -103,34 +103,34 @@ export const socketService = {
       this.emitLocal('friend_request', data);
     });
 
-    socket.on('request_accepted', (data: { 
-      id: string; 
+    socket.on('request_accepted', (data: {
+      id: string;
       user: { id: string; name: string; picture?: string };
     }) => {
       logger.info('Request accepted:', data);
-      
+
       useFriendStore.getState().addFriend({
         id: data.user.id,
         name: data.user.name,
         picture: data.user.picture,
         status: 'offline',
       });
-      
+
       this.emitLocal('request_accepted', data);
     });
 
-    socket.on('friend_nearby', (data: { 
-      friendId: string; 
+    socket.on('friend_nearby', (data: {
+      friendId: string;
       status: 'nearby' | 'offline';
     }) => {
       logger.info('Friend nearby status:', data);
-      
+
       const friends = useFriendStore.getState().friends;
-      const updatedFriends = friends.map(f => 
+      const updatedFriends = friends.map(f =>
         f.id === data.friendId ? { ...f, status: data.status } : f
       );
       useFriendStore.getState().setFriends(updatedFriends);
-      
+
       this.emitLocal('friend_nearby', data);
     });
   },

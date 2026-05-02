@@ -67,7 +67,7 @@ export function NotificationsPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)]">Notifications</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Real-time alerts and updates</p>
         </div>
-        
+
         {unreadNotifications.length > 0 && (
           <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead}>
             Mark All Read
