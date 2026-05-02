@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthService } from '../services/authService';
 import { useNotificationStore } from './notificationStore';
+import { logger } from '../utils/logger';
 
 interface AuthState {
   user: User | null;
@@ -37,14 +38,14 @@ const storage = {
     try {
       await AsyncStorage.setItem(name, value);
     } catch (e) {
-      console.log('[Storage] setItem failed:', name);
+      logger.warn('[Storage] setItem failed:', name);
     }
   },
   removeItem: async (name: string) => {
     try {
       await AsyncStorage.removeItem(name);
     } catch {
-      console.log('[Storage] removeItem failed:', name);
+      logger.warn('[Storage] removeItem failed:', name);
     }
   },
 };
@@ -59,11 +60,11 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       login: async (idToken: string) => {
-        console.log('[AuthStore] login start');
+        logger.debug('[AuthStore] login start');
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.loginWithGoogle(idToken);
-          console.log('[AuthStore] login success', { hasUser: !!user, hasToken: !!token });
+          logger.info('[AuthStore] login success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -79,17 +80,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Login failed',
           });
-          console.log('[AuthStore] login failed', error?.message || error);
+          logger.warn('[AuthStore] login failed', error?.message || error);
           throw error;
         }
       },
 
       loginWithEmail: async (email: string, password: string) => {
-        console.log('[AuthStore] email login start', { email });
+        logger.debug('[AuthStore] email login start', { email });
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.login(email, password);
-          console.log('[AuthStore] email login success', { hasUser: !!user, hasToken: !!token });
+          logger.info('[AuthStore] email login success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -105,17 +106,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Login failed',
           });
-          console.log('[AuthStore] email login failed', error?.message || error);
+          logger.warn('[AuthStore] email login failed', error?.message || error);
           throw error;
         }
       },
 
       registerWithEmail: async (data: { email: string; password: string; name: string }) => {
-        console.log('[AuthStore] register start', { email: data.email });
+        logger.debug('[AuthStore] register start', { email: data.email });
         set({ isLoading: true, error: null });
         try {
           const { user, token } = await AuthService.register(data);
-          console.log('[AuthStore] register success', { hasUser: !!user, hasToken: !!token });
+          logger.info('[AuthStore] register success', { hasUser: !!user, hasToken: !!token });
           set({
             user,
             token,
@@ -131,13 +132,13 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: error.message || 'Registration failed',
           });
-          console.log('[AuthStore] register failed', error?.message || error);
+          logger.warn('[AuthStore] register failed', error?.message || error);
           throw error;
         }
       },
 
       logout: async () => {
-        console.log('[AuthStore] logout start');
+        logger.debug('[AuthStore] logout start');
         set({ isLoading: true });
         try {
           await AuthService.logout();
@@ -149,13 +150,13 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           });
-          console.log('[AuthStore] logout success');
+          logger.info('[AuthStore] logout success');
         } catch (error: any) {
           set({
             isLoading: false,
             error: error.message || 'Logout failed',
           });
-          console.log('[AuthStore] logout failed', error?.message || error);
+          logger.warn('[AuthStore] logout failed', error?.message || error);
         }
       },
 
@@ -164,25 +165,37 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       checkAuth: async () => {
-        console.log('[AuthStore] checkAuth start');
+        logger.debug('[AuthStore] checkAuth start');
         set({ isLoading: true });
         try {
           const token = await AuthService.getStoredToken();
           const user = await AuthService.getStoredUser();
-
-          console.log('[Auth] checkAuth - token:', !!token, 'user:', !!user);
+          logger.debug('[Auth] checkAuth - token:', !!token, 'user:', !!user);
 
           if (token && user) {
-            console.log('[AuthStore] checkAuth authenticated path');
-            set({
-              user,
-              token,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
+            const verifiedUser = await AuthService.verifyToken();
+            if (verifiedUser) {
+              logger.info('[AuthStore] checkAuth verified with server');
+              set({
+                user: verifiedUser,
+                token,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+            } else {
+              logger.info('[AuthStore] checkAuth token invalid, clearing auth');
+              await AuthService.logout();
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+              });
+            }
           } else {
-            console.log('[AuthStore] checkAuth unauthenticated path');
+            logger.info('[AuthStore] checkAuth unauthenticated path');
             set({
               user: null,
               token: null,
@@ -191,7 +204,7 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch (error: any) {
-          console.log('[AuthStore] checkAuth failed', error?.message || error);
+          logger.error('[AuthStore] checkAuth failed', error?.message || error);
           set({
             user: null,
             token: null,

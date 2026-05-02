@@ -31,7 +31,9 @@ export class EmailService {
   }
 
   static async sendPasswordResetEmail(to: string, name: string, token: string): Promise<void> {
-    const resetUrl = `nearme://reset-password?token=${token}`;
+    const encodedToken = encodeURIComponent(token);
+    const resetUrl = `nearme://reset-password?token=${encodedToken}`;
+    const webUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${encodedToken}`;
     const subject = 'Reset Your NearMe Password';
     const html = `
       <!DOCTYPE html>
@@ -62,6 +64,11 @@ export class EmailService {
                 <a href="${resetUrl}" class="button">Reset Password</a>
               </p>
               <p>This link will expire in 1 hour.</p>
+              <p style="text-align: center; margin-top: 15px;">
+                <a href="${webUrl}" style="color: #6366f1; font-size: 12px; text-decoration: underline;">
+                  Open in browser
+                </a>
+              </p>
               <p style="color: #9ca3af; font-size: 12px;">If you didn't request this, please ignore this email or contact support if you have concerns.</p>
             </div>
             <div class="footer">

@@ -1,16 +1,19 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
+import cookieParser from 'cookie-parser';
 import { logger } from './shared/logger/logger';
 import { setupSwagger } from './docs/swagger';
 import { errorHandler, notFoundHandler } from './shared/middlewares/errorHandler';
+import { getCorsOrigin, isProduction } from './shared/config';
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import friendRoutes from './modules/friends/friend.routes';
 import locationRoutes from './modules/location/location.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
+import { connectDB } from './shared/db/connection';
 
 const app: Express = express();
 
@@ -223,18 +226,15 @@ app.use(
   helmet({
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    // Add this to prevent Google's scripts from being blocked by Content Security Policy
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: isProduction ? false : undefined,
   }),
 );
 
-const corsOriginList = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-  : ['http://localhost:5173'];
+const corsOriginList = getCorsOrigin();
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin || corsOriginList.includes('*')) {
+    if (!origin) {
       callback(null, true);
       return;
     }
@@ -248,6 +248,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use(cookieParser());
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -300,6 +301,19 @@ setupSwagger(app);
 
 app.get('/', (_req: Request, res: Response) => {
   res.status(200).type('html').send(landingPage);
+});
+
+app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    logger.error({ error }, 'Database unavailable for API request');
+    res.status(503).json({
+      success: false,
+      message: 'Database unavailable. Please try again shortly.',
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);

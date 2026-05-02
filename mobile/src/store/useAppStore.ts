@@ -66,14 +66,17 @@ const storage = {
     try {
       await AsyncStorage.setItem(name, value);
     } catch (e) {
-      console.log('[Storage] setItem failed:', name);
+      // avoid noisy logs in production
+      // eslint-disable-next-line no-console
+      console.warn('[Storage] setItem failed:', name);
     }
   },
   removeItem: async (name: string) => {
     try {
       await AsyncStorage.removeItem(name);
     } catch {
-      console.log('[Storage] removeItem failed:', name);
+      // eslint-disable-next-line no-console
+      console.warn('[Storage] removeItem failed:', name);
     }
   },
 };

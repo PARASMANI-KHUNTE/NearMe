@@ -15,6 +15,7 @@ import {
   googleAuthConfig,
   shouldUseNativeGoogleSignIn,
 } from '../../config/googleAuth';
+import { logger } from '../../utils/logger';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -84,7 +85,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
         name: data.name,
       });
     } catch (err) {
-      console.error('Signup error:', err);
+      logger.error('Signup error:', err);
     }
   };
 
@@ -116,7 +117,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const result = await GoogleSignin.signIn();
-      console.log('[GoogleSignIn][Signup] signIn result', result);
+      logger.info('[GoogleSignIn][Signup] signIn result', {
+        type: result.type,
+        hasIdToken: isSuccessResponse(result) ? !!result.data.idToken : false,
+        email: isSuccessResponse(result) ? result.data.user.email : undefined,
+      });
 
       if (isCancelledResponse(result)) {
         return;
@@ -136,7 +141,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
 
       await handleGoogleLogin(idToken);
     } catch (err) {
-      console.log('[GoogleSignIn][Signup] native sign-in failed', err);
+      logger.error('[GoogleSignIn][Signup] native sign-in failed', err);
       if (isErrorWithCode(err)) {
         if (err.code === statusCodes.IN_PROGRESS || err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
           Alert.alert('Google Sign-In', err.message);
@@ -193,7 +198,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
           />
         )}
       />
-      
+
       <Controller
         control={control}
         name="password"

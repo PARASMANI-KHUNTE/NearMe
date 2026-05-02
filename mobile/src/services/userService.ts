@@ -1,5 +1,6 @@
 import { api } from './api';
 import { User } from './authService';
+import { logger } from '../utils/logger';
 
 export interface UpdateSettingsRequest {
   radius?: number;
@@ -19,7 +20,7 @@ export class UserService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Get profile error:', error);
+      logger.error('Get profile error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get profile failed');
     }
   }
@@ -35,7 +36,7 @@ export class UserService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Update settings error:', error);
+      logger.error('Update settings error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Update settings failed');
     }
   }
@@ -51,8 +52,24 @@ export class UserService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Search users error:', error);
+      logger.error('Search users error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Search users failed');
+    }
+  }
+
+  /**
+   * Get shareable profile (NearMe ID)
+   */
+  static async getShareProfile(): Promise<{ uniqueId: string }> {
+    try {
+      const response = await api.get('/users/share');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to get share profile');
+      }
+      return response.data.data;
+    } catch (error: any) {
+      logger.error('Get share profile error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Get share profile failed');
     }
   }
 }

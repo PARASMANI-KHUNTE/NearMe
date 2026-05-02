@@ -14,6 +14,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import { logger } from '../../utils/logger';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -122,7 +123,7 @@ const MapScreen = () => {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Fetch nearby users error:', message);
+      logger.error('Fetch nearby users error:', message);
     } finally {
       setIsRefreshing(false);
     }
@@ -137,10 +138,10 @@ const MapScreen = () => {
 
   const centerOnUser = () => {
     if (location && mapRef.current) {
-      // 1 degree latitude is ~111km. 
+      // 1 degree latitude is ~111km.
       // Calculate delta to show the entire radius circle + some padding
-      const delta = (radius * 2.5) / 111320; 
-      
+      const delta = (radius * 2.5) / 111320;
+
       mapRef.current.animateToRegion({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,

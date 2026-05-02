@@ -21,7 +21,7 @@ export function MapPage() {
 
       <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
         {/* Map */}
-        <div className="flex-1 min-h-[300px] md:min-h-[400px] rounded-xl overflow-hidden">
+        <div className="flex-1 min-h-[280px] md:min-h-[420px] rounded-xl overflow-hidden">
           <MapView height="100%" />
         </div>
 
@@ -33,7 +33,7 @@ export function MapPage() {
                 Nearby ({nearbyFriendsList.length})
               </h2>
             </div>
-            
+
             {nearbyFriendsList.length === 0 ? (
               <div className="py-8 text-center text-[var(--text-muted)]">
                 <p className="text-4xl mb-2">👥</p>
@@ -45,8 +45,8 @@ export function MapPage() {
                   <div
                     key={friend.id}
                     className={`flex items-center justify-between p-3 rounded-xl transition-all ${
-                      selectedFriendId === friend.id 
-                        ? 'bg-[var(--primary)]/10 border border-[var(--primary)]/20' 
+                      selectedFriendId === friend.id
+                        ? 'bg-[var(--primary)]/10 border border-[var(--primary)]/20'
                         : 'bg-[var(--surface-hover)]'
                     }`}
                   >
@@ -72,8 +72,8 @@ export function MapPage() {
               <p className="text-sm text-[var(--text-muted)] mb-3">
                 Meetup confirmation required for routing
               </p>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="w-full"
                 onClick={() => setSelectedFriendId(null)}
               >

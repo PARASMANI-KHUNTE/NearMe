@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from './authService';
+import { logger } from '../utils/logger';
 
 const CACHE_KEYS = {
   USER_PROFILE: 'cached_user_profile',
@@ -30,7 +31,7 @@ class CacheService {
       };
       await AsyncStorage.setItem(key, JSON.stringify(entry));
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error('Cache set error:', error);
     }
   }
 
@@ -52,7 +53,7 @@ class CacheService {
 
       return entry.data;
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error('Cache get error:', error);
       return null;
     }
   }
@@ -64,7 +65,7 @@ class CacheService {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error('Cache remove error:', error);
+      logger.error('Cache remove error:', error);
     }
   }
 
@@ -77,7 +78,7 @@ class CacheService {
       const cacheKeys = keys.filter(key => key.startsWith('cached_'));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.error('Cache clear error:', error);
+      logger.error('Cache clear error:', error);
     }
   }
 
@@ -99,7 +100,7 @@ class CacheService {
 
       return totalSize;
     } catch (error) {
-      console.error('Cache size error:', error);
+      logger.error('Cache size error:', error);
       return 0;
     }
   }
@@ -122,7 +123,7 @@ class CacheService {
         }
       }
     } catch (error) {
-      console.error('Clear expired error:', error);
+      logger.error('Clear expired error:', error);
     }
   }
 }

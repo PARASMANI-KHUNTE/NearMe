@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   ScrollView,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
@@ -17,6 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { UserService } from '../../services/userService';
 import { socketService } from '../../services/socketService';
+import * as Clipboard from 'expo-clipboard';
 
 const ProfileScreen = () => {
   const { invisibleMode, setInvisibleMode, shareLocation, setShareLocation, themeMode, toggleThemeMode, syncPreferences } = useAppStore();
@@ -27,6 +29,8 @@ const ProfileScreen = () => {
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState(user);
   const [imageError, setImageError] = useState(false);
+  const [uniqueId, setUniqueId] = useState<string>('');
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -52,6 +56,15 @@ const ProfileScreen = () => {
   useEffect(() => {
     setImageError(false);
   }, [profileUser?.picture, user?.picture]);
+
+  // Fetch NearMe ID for sharing
+  useEffect(() => {
+    if (token) {
+      UserService.getShareProfile()
+        .then(data => setUniqueId(data.uniqueId))
+        .catch(() => setUniqueId(''));
+    }
+  }, [token]);
 
   const handleSettingToggle = useCallback(
     async (
@@ -84,6 +97,26 @@ const ProfileScreen = () => {
     },
     [setUser, syncPreferences]
   );
+
+  const handleCopyId = useCallback(async () => {
+    if (!uniqueId) return;
+    await Clipboard.setStringAsync(uniqueId);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  }, [uniqueId]);
+
+  const handleShare = useCallback(async () => {
+    if (!uniqueId) return;
+    try {
+      await Share.share({
+        title: 'Add me on NearMe',
+        message: `Add me on NearMe using my ID: ${uniqueId}`,
+      });
+    } catch {
+      // Share cancelled or failed, fallback to copy
+      await handleCopyId();
+    }
+  }, [uniqueId, handleCopyId]);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out?', [
@@ -138,6 +171,39 @@ const ProfileScreen = () => {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* NearMe ID Card */}
+        <View style={[styles.idCard, { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border }]}>
+          <View style={styles.idCardHeader}>
+            <Ionicons name="qr-code-outline" size={18} color={appTheme.colors.accent} />
+            <Text style={[styles.idCardTitle, { color: appTheme.colors.text }]}>Your NearMe ID</Text>
+          </View>
+          <Text style={[styles.idCardSub, { color: appTheme.colors.text }]}>Share this ID so friends can add you</Text>
+
+          <View style={styles.idRow}>
+            <View style={[styles.idBox, { backgroundColor: appTheme.colors.background, borderColor: appTheme.colors.border }]}>
+              <Text style={[styles.idText, { color: appTheme.colors.primary }]}>
+                {uniqueId || '...'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.copyBtn, { backgroundColor: isCopied ? 'rgba(34,197,94,0.15)' : 'rgba(79,70,229,0.15)', borderColor: isCopied ? 'rgba(34,197,94,0.3)' : 'rgba(79,70,229,0.3)' }]}
+              onPress={handleCopyId}
+              disabled={!uniqueId}
+            >
+              <Ionicons name={isCopied ? 'checkmark-circle' : 'copy-outline'} size={18} color={isCopied ? appTheme.colors.secondary : appTheme.colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.shareBtn, { backgroundColor: 'rgba(79,70,229,0.15)', borderColor: 'rgba(79,70,229,0.3)' }]}
+            onPress={handleShare}
+            disabled={!uniqueId}
+          >
+            <Ionicons name="share-social-outline" size={16} color={appTheme.colors.primary} />
+            <Text style={[styles.shareBtnText, { color: appTheme.colors.primary }]}>Share NearMe ID</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Settings Section */}
@@ -297,6 +363,69 @@ const styles = StyleSheet.create({
   settingsHintText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  idCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+  },
+  idCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  idCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  idCardSub: {
+    fontSize: 12,
+    opacity: 0.5,
+    marginBottom: 12,
+  },
+  idRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  idBox: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  idText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  copyBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  shareBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 13,

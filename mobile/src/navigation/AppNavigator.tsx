@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import PermissionScreen from '../screens/PermissionScreen';
 import { socketService } from '../services/socketService';
+import { logger } from '../utils/logger';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,68 +69,68 @@ export const AppNavigator = () => {
   const shareLocation = useAppStore((state) => state.shareLocation);
   const [shouldShowPermissionGate, setShouldShowPermissionGate] = React.useState(false);
 
-  console.log('[Navigator] render', {
+  logger.debug('[Navigator] render', {
     isAuthenticated,
     isLoading,
     hasUser: !!user,
     shareLocation,
     shouldShowPermissionGate,
-    routeBranch: isLoading
-      ? 'Splash'
-      : !isAuthenticated
-        ? 'Auth'
-        : shouldShowPermissionGate
-          ? 'Permission'
-          : 'MainTabs',
+    routeBranch: isLoading ? 'Splash' : !isAuthenticated ? 'Auth' : shouldShowPermissionGate ? 'Permission' : 'MainTabs',
   });
 
   // Get store functions outside of render to avoid circular dependencies
   const checkAuth = useCallback(() => {
-    console.log('[Navigator] checkAuth callback invoked');
-    useAuthStore.getState().checkAuth();
+    const authState = useAuthStore.getState();
+
+    if (authState.isLoading || authState.isAuthenticated) {
+      logger.debug('[Navigator] checkAuth skipped', {
+        isLoading: authState.isLoading,
+        isAuthenticated: authState.isAuthenticated,
+      });
+      return;
+    }
+
+    logger.debug('[Navigator] checkAuth callback invoked');
+    authState.checkAuth();
   }, []);
 
   const syncPrefs = useCallback((settings: any) => {
-    console.log('[Navigator] syncPrefs callback invoked', settings);
+    logger.debug('[Navigator] syncPrefs callback invoked', settings);
     useAppStore.getState().syncPreferences(settings);
   }, []);
 
   useEffect(() => {
-    console.log('[Navigator] checkAuth effect start');
+    logger.debug('[Navigator] checkAuth effect start');
     checkAuth();
   }, [checkAuth]);
 
   useEffect(() => {
     if (user?.settings) {
-      console.log('[Navigator] syncing user settings from auth store', user.settings);
+      logger.debug('[Navigator] syncing user settings from auth store', user.settings);
       syncPrefs(user.settings);
     } else {
-      console.log('[Navigator] no user settings to sync');
+      logger.debug('[Navigator] no user settings to sync');
     }
   }, [user, syncPrefs]);
 
   useEffect(() => {
     const syncPermissionGate = async () => {
-      console.log('[Navigator] permission gate effect start', {
-        isAuthenticated,
-        isLoading,
-        shareLocation,
-      });
+      logger.debug('[Navigator] permission gate effect start', { isAuthenticated, isLoading, shareLocation });
 
       if (!isAuthenticated || isLoading) {
-        console.log('[Navigator] permission gate disabled by auth/loading state');
+        logger.debug('[Navigator] permission gate disabled by auth/loading state');
         setShouldShowPermissionGate(false);
         return;
       }
 
       if (!shareLocation) {
-        console.log('[Navigator] permission gate disabled because sharing is off');
+        logger.debug('[Navigator] permission gate disabled because sharing is off');
         setShouldShowPermissionGate(false);
         return;
       }
 
       const { status } = await Location.getForegroundPermissionsAsync();
-      console.log('[Navigator] permission status resolved', status);
+      logger.debug('[Navigator] permission status resolved', status);
       setShouldShowPermissionGate(status !== 'granted');
     };
 
@@ -139,22 +140,19 @@ export const AppNavigator = () => {
   // Delay service connections to let UI settle
   useEffect(() => {
     if (!isAuthenticated || isLoading) {
-      console.log('[Navigator] skipping delayed service start', {
-        isAuthenticated,
-        isLoading,
-      });
+      logger.debug('[Navigator] skipping delayed service start', { isAuthenticated, isLoading });
       return;
     }
 
     const timer = setTimeout(() => {
-      console.log('[Navigator] Starting services after delay...');
+      logger.info('[Navigator] Starting services after delay...');
 
       socketService.connect()
         .then(() => {
-          console.log('[Navigator] Socket connected');
+          logger.info('[Navigator] Socket connected');
           initializeSocketListeners();
         })
-        .catch(err => console.log('[Navigator] Socket skip:', err.message));
+        .catch(err => logger.warn('[Navigator] Socket skip:', err.message));
 
     }, 2000);
 
@@ -184,4 +182,3 @@ export const AppNavigator = () => {
     </NavigationContainer>
   );
 };
-

@@ -20,6 +20,7 @@ import { Button } from '../../components/Button';
 import { LocationService } from '../../services/locationService';
 import { UserService } from '../../services/userService';
 import { api } from '../../services/api';
+import { logger } from '../../utils/logger';
 
 const RADIUS_OPTIONS = [100, 500, 1000, 2000, 3000, 5000];
 
@@ -83,7 +84,7 @@ const HomeScreen = () => {
         setNearbyCount(Array.isArray(response.data.data) ? response.data.data.length : 0);
       }
     } catch (err) {
-      console.error('Failed to fetch nearby count:', err);
+      logger.error('Failed to fetch nearby count:', err);
       setNearbyCount(null);
     } finally {
       setIsLoadingNearby(false);
@@ -96,7 +97,7 @@ const HomeScreen = () => {
       LocationService.startLocationUpdates(60000, () => {
         fetchNearbyCount();
       }).catch((error) => {
-        console.log('[Home] Location updates skipped:', error.message);
+        logger.info('[Home] Location updates skipped:', error.message);
       });
     } else {
       LocationService.stopLocationUpdates();
@@ -124,7 +125,7 @@ const HomeScreen = () => {
         setNearbyCount(0);
       }
     } catch (err) {
-      console.error('Failed to update location sharing setting:', err);
+      logger.error('Failed to update location sharing setting:', err);
       setShareLocation(previousValue);
     } finally {
       setIsSavingSettings(false);
@@ -172,7 +173,7 @@ const HomeScreen = () => {
       setUser(updatedUser);
       syncPreferences(updatedUser.settings);
     } catch (err) {
-      console.error('Failed to update radius setting:', err);
+      logger.error('Failed to update radius setting:', err);
     }
   };
 
@@ -189,7 +190,7 @@ const HomeScreen = () => {
       setUser(updatedUser);
       syncPreferences(updatedUser.settings);
     } catch (err) {
-      console.error('Failed to update radius:', err);
+      logger.error('Failed to update radius:', err);
     }
   };
 

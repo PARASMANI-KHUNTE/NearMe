@@ -15,6 +15,7 @@ import {
   googleAuthConfig,
   shouldUseNativeGoogleSignIn,
 } from '../../config/googleAuth';
+import { logger } from '../../utils/logger';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -95,7 +96,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const result = await GoogleSignin.signIn();
-      console.log('[GoogleSignIn][Login] signIn result', result);
+      logger.info('[GoogleSignIn][Login] signIn result', {
+        type: result.type,
+        hasIdToken: isSuccessResponse(result) ? !!result.data.idToken : false,
+        email: isSuccessResponse(result) ? result.data.user.email : undefined,
+      });
 
       if (isCancelledResponse(result)) {
         return;
@@ -115,7 +120,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       await handleGoogleLogin(idToken);
     } catch (err) {
-      console.log('[GoogleSignIn][Login] native sign-in failed', err);
+      logger.error('[GoogleSignIn][Login] native sign-in failed', err);
       if (isErrorWithCode(err)) {
         if (err.code === statusCodes.IN_PROGRESS || err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
           Alert.alert('Google Sign-In', err.message);
@@ -132,7 +137,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       await loginWithEmail(data.email, data.password);
     } catch (err: any) {
-      console.error('Email login error:', err);
+      logger.error('Email login error:', err);
     }
   };
 

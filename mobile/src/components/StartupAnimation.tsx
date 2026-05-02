@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme';
+import { logger } from '../utils/logger';
 
 interface StartupAnimationProps {
   onFinish: () => void;
@@ -65,7 +66,7 @@ const StartupAnimation: React.FC<StartupAnimationProps> = ({ onFinish }) => {
 
     // Hard fallback: never allow startup screen to block app boot.
     const hardFallbackTimer = setTimeout(() => {
-      console.log('[Startup] Hard fallback triggered');
+      logger.info('[Startup] Hard fallback triggered');
       finishSafely();
     }, 2000);
 

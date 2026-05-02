@@ -4,22 +4,24 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { User, IUser } from '../users/user.model';
-import { getJwtSecret, getJwtExpiresIn, getGoogleClientIds } from '../../shared/config';
+import { getJwtSecret, getJwtExpiresIn, getGoogleClientIds, getJwtRefreshExpiresIn } from '../../shared/config';
 import { EmailService } from '../../shared/services/email.service';
+import { redisClient } from '../../shared/redis/connection';
 
 const client = new OAuth2Client();
 
 const generateUniqueId = (): string => {
+  const bytes = crypto.randomBytes(4);
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(bytes[i] % chars.length);
   }
   return result;
 };
 
 export class AuthService {
-  static async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string }> {
+  static async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string; refreshToken: string }> {
     const { email, password, name } = userData;
 
     // Check if user exists
@@ -46,15 +48,18 @@ export class AuthService {
     });
 
     const token = this.generateToken(user._id.toString());
+    const refreshToken = this.generateRefreshToken(user._id.toString());
+
+    await this.storeRefreshToken(user._id.toString(), refreshToken);
 
     // Remove password from returned user object
     const userObj = user.toObject();
     delete (userObj as any).password;
 
-    return { user: userObj as IUser, token };
+    return { user: userObj as IUser, token, refreshToken };
   }
 
-  static async login(email: string, password: string): Promise<{ user: IUser; token: string }> {
+  static async login(email: string, password: string): Promise<{ user: IUser; token: string; refreshToken: string }> {
     // Find user and include password for verification
     const user = await User.findOne({ email }).select('+password');
     if (!user || !user.password) {
@@ -68,11 +73,14 @@ export class AuthService {
     }
 
     const token = this.generateToken(user._id.toString());
+    const refreshToken = this.generateRefreshToken(user._id.toString());
+
+    await this.storeRefreshToken(user._id.toString(), refreshToken);
 
     const userObj = user.toObject();
     delete (userObj as any).password;
 
-    return { user: userObj as IUser, token };
+    return { user: userObj as IUser, token, refreshToken };
   }
 
   static async forgotPassword(email: string): Promise<{ message: string }> {
@@ -95,7 +103,7 @@ export class AuthService {
     return { message: 'If an account exists with that email, a password reset link has been sent' };
   }
 
-  static async resetPassword(token: string, password: string): Promise<{ user: IUser; token: string }> {
+  static async resetPassword(token: string, password: string): Promise<{ user: IUser; token: string; refreshToken: string }> {
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: new Date() },
@@ -112,14 +120,17 @@ export class AuthService {
     await user.save();
 
     const newToken = this.generateToken(user._id.toString());
+    const newRefreshToken = this.generateRefreshToken(user._id.toString());
+
+    await this.storeRefreshToken(user._id.toString(), newRefreshToken);
 
     const userObj = user.toObject();
     delete (userObj as any).password;
 
-    return { user: userObj as IUser, token: newToken };
+    return { user: userObj as IUser, token: newToken, refreshToken: newRefreshToken };
   }
 
-  static async verifyGoogleTokenAndLogin(idToken: string): Promise<{ user: IUser; token: string }> {
+  static async verifyGoogleTokenAndLogin(idToken: string): Promise<{ user: IUser; token: string; refreshToken: string }> {
     const googleClientIds = getGoogleClientIds();
     const audience = [
       googleClientIds.web,
@@ -180,18 +191,108 @@ export class AuthService {
     }
 
     const token = this.generateToken(user._id.toString());
+    const refreshToken = this.generateRefreshToken(user._id.toString());
+
+    await this.storeRefreshToken(user._id.toString(), refreshToken);
 
     // Convert to plain object like other auth methods
     const userObj = typeof (user as any).toObject === 'function'
       ? (user as any).toObject()
       : user;
 
-    return { user: userObj as IUser, token };
+    return { user: userObj as IUser, token, refreshToken };
   }
 
   private static generateToken(userId: string): string {
-    return jwt.sign({ id: userId }, getJwtSecret(), {
+    return jwt.sign({ id: userId, type: 'access' }, getJwtSecret(), {
       expiresIn: getJwtExpiresIn() as any,
     });
+  }
+
+  private static generateRefreshToken(userId: string): string {
+    return jwt.sign({ id: userId, type: 'refresh' }, getJwtSecret(), {
+      expiresIn: getJwtRefreshExpiresIn() as any,
+    });
+  }
+
+  private static async storeRefreshToken(userId: string, token: string): Promise<void> {
+    try {
+      const key = `refresh_token:${userId}`;
+      const expirySeconds = 7 * 24 * 60 * 60; // 7 days
+      await redisClient.set(key, token, { EX: expirySeconds });
+    } catch (error) {
+      // Redis not available, skip storing refresh token
+      console.warn('Redis not available, refresh token not stored');
+    }
+  }
+
+  static async refreshAccessToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+    try {
+      const decoded = jwt.verify(refreshToken, getJwtSecret()) as { id: string; type: string };
+      
+      if (decoded.type !== 'refresh') {
+        throw new Error('Invalid token type');
+      }
+
+      try {
+        const storedToken = await redisClient.get(`refresh_token:${decoded.id}`);
+        if (storedToken && storedToken !== refreshToken) {
+          throw new Error('Refresh token is invalid or has been revoked');
+        }
+      } catch {
+        // Redis not available, skip validation
+      }
+
+      // Generate new access token
+      const newToken = this.generateToken(decoded.id);
+      
+      // Rotate refresh token (generate new one and invalidate old)
+      const newRefreshToken = this.generateRefreshToken(decoded.id);
+      await this.storeRefreshToken(decoded.id, newRefreshToken);
+
+      return { token: newToken, refreshToken: newRefreshToken };
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Refresh token has expired');
+      }
+      throw new Error('Invalid refresh token');
+    }
+  }
+
+  static async logout(userId: string, refreshToken?: string): Promise<void> {
+    try {
+      // Blacklist the current access token
+      const key = `blacklist:${userId}`;
+      await redisClient.set(key, '1', { EX: 15 * 60 }); // Blacklist for 15 minutes (access token expiry)
+    } catch {
+      // Redis not available, skip blacklisting
+    }
+
+    // Remove refresh token if provided
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, getJwtSecret()) as { id: string };
+        await redisClient.del(`refresh_token:${decoded.id}`);
+      } catch {
+        // Token might already be invalid or Redis not available
+      }
+    }
+
+    // Always remove the stored refresh token for this user
+    try {
+      await redisClient.del(`refresh_token:${userId}`);
+    } catch {
+      // Redis not available
+    }
+  }
+
+  static async isTokenBlacklisted(userId: string): Promise<boolean> {
+    try {
+      const result = await redisClient.get(`blacklist:${userId}`);
+      return result !== null;
+    } catch {
+      // Redis not available, assume token is not blacklisted
+      return false;
+    }
   }
 }

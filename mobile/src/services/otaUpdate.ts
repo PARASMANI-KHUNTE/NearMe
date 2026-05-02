@@ -1,4 +1,5 @@
 import * as Updates from 'expo-updates';
+import { logger } from '../utils/logger';
 
 export const checkAndApplyOtaUpdate = async () => {
   // In Expo Go this can throw or be unavailable; keep it non-blocking.
@@ -13,6 +14,6 @@ export const checkAndApplyOtaUpdate = async () => {
       await Updates.reloadAsync();
     }
   } catch (error) {
-    console.log('OTA check skipped:', error);
+    logger.info('OTA check skipped:', error);
   }
 };

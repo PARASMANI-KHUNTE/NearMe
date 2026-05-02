@@ -7,6 +7,7 @@ import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/authStore';
 import type { ForgotPasswordScreenProps } from '../../navigation/types';
 import { AuthLayout } from '../../components/auth/AuthLayout';
+import { logger } from '../../utils/logger';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -38,19 +39,19 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation,
   const [step, setStep] = useState<'forgot' | 'reset'>(resetTokenFromRoute ? 'reset' : 'forgot');
   const [userEmail, setUserEmail] = useState('');
 
-  const { 
-    control: forgotControl, 
-    handleSubmit: handleForgotSubmit, 
-    formState: { errors: forgotErrors } 
+  const {
+    control: forgotControl,
+    handleSubmit: handleForgotSubmit,
+    formState: { errors: forgotErrors }
   } = useForm<ForgotPasswordSchema>({
     resolver: zodResolver(forgotPasswordSchema),
   });
 
-  const { 
-    control: resetControl, 
-    handleSubmit: handleResetSubmit, 
+  const {
+    control: resetControl,
+    handleSubmit: handleResetSubmit,
     setValue: setResetValue,
-    formState: { errors: resetErrors } 
+    formState: { errors: resetErrors }
   } = useForm<ResetPasswordSchema>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -78,7 +79,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation,
       setStep('reset');
       Alert.alert('Success', 'If an account exists, a reset token has been sent to your email.');
     } catch (err: any) {
-      console.log('Forgot password error:', err);
+      logger.error('Forgot password error:', err);
     }
   };
 
@@ -89,7 +90,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation,
         { text: 'Login', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (err: any) {
-      console.log('Reset password error:', err);
+      logger.error('Reset password error:', err);
     }
   };
 

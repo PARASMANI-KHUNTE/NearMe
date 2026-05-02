@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { env } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../utils/logger';
 
 const TOKEN_KEY = 'auth_token';
 
@@ -34,7 +35,7 @@ class SocketService {
    */
   async connect(): Promise<void> {
     if (this.socket?.connected) {
-      console.log('[Socket] Already connected');
+      logger.debug('[Socket] Already connected');
       return;
     }
 
@@ -72,16 +73,16 @@ class SocketService {
         };
 
         const handleConnect = () => {
-          console.log('[Socket] Connected via', socket.io.engine.transport.name);
-          console.log('[Socket] Connected successfully');
+          logger.info('[Socket] Connected via', socket.io.engine.transport.name);
+          logger.info('[Socket] Connected successfully');
           cleanup();
           resolve();
         };
 
         const handleConnectError = (error: Error) => {
-          console.error('[Socket] Connection error:', error.message);
+          logger.error('[Socket] Connection error:', error.message);
           if (error.message.includes('Authentication')) {
-            console.error('[Socket] Token may be invalid or expired');
+            logger.error('[Socket] Token may be invalid or expired');
           }
           cleanup();
           reject(error);
@@ -91,7 +92,7 @@ class SocketService {
         socket.once('connect_error', handleConnectError);
 
         socket.on('disconnect', (reason) => {
-          console.log('[Socket] Disconnected:', reason);
+          logger.info('[Socket] Disconnected:', reason);
         });
 
         socket.on('proximity_alert', (data: SocketNotification) => {
@@ -113,7 +114,7 @@ class SocketService {
     } catch (error) {
       this.socket?.disconnect();
       this.socket = null;
-      console.error('Socket connect error:', error);
+      logger.error('Socket connect error:', error);
       throw error;
     } finally {
       this.connectionPromise = null;

@@ -1,4 +1,6 @@
 import { api } from './api';
+import { logger } from '../utils/logger';
+import { env } from '../config/env';
 import {
   clearStoredAuth,
   getStoredToken,
@@ -30,6 +32,58 @@ export interface AuthResponse {
   message: string;
 }
 
+const getApiUrl = (path: string): string => {
+  const baseUrl = env.API_BASE_URL.replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  return `${baseUrl}${normalizedPath}`;
+};
+
+const parseJsonResponse = async <T>(response: Response): Promise<T> => {
+  const text = await response.text();
+
+  if (!text) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Invalid JSON response from server (${response.status})`);
+  }
+};
+
+const postGoogleLoginWithFetch = async (idToken: string): Promise<AuthResponse> => {
+  const url = getApiUrl('/auth/google');
+
+  logger.info('[AuthService] loginWithGoogle fetch request', {
+    url,
+    hasIdToken: !!idToken,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ idToken }),
+  });
+
+  const data = await parseJsonResponse<AuthResponse>(response);
+
+  logger.info('[AuthService] loginWithGoogle fetch response', {
+    status: response.status,
+    success: data.success,
+  });
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || `Google login failed (${response.status})`);
+  }
+
+  return data;
+};
+
 export class AuthService {
   /**
    * Authenticate user with Google idToken
@@ -37,13 +91,18 @@ export class AuthService {
    */
   static async loginWithGoogle(idToken: string): Promise<{ user: User; token: string }> {
     try {
-      const response = await api.post<AuthResponse>('/auth/google', { idToken });
+      logger.info('[AuthService] loginWithGoogle request', {
+        apiBaseUrl: env.API_BASE_URL,
+        hasIdToken: !!idToken,
+      });
 
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Authentication failed');
+      const response = await postGoogleLoginWithFetch(idToken);
+
+      if (!response.success) {
+        throw new Error(response.message || 'Authentication failed');
       }
 
-      const { user, token } = response.data.data;
+      const { user, token } = response.data;
 
       // Store token securely
       await setStoredToken(token);
@@ -53,7 +112,7 @@ export class AuthService {
 
       return { user, token };
     } catch (error: any) {
-      console.error('Google login error:', error);
+      logger.error('Google login error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Login failed');
     }
   }
@@ -76,7 +135,7 @@ export class AuthService {
 
       return { user, token };
     } catch (error: any) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Registration failed');
     }
   }
@@ -99,7 +158,7 @@ export class AuthService {
 
       return { user, token };
     } catch (error: any) {
-      console.error('Email login error:', error);
+      logger.error('Email login error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Login failed');
     }
   }
@@ -111,7 +170,7 @@ export class AuthService {
     try {
       await clearStoredAuth();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   }
 
@@ -122,7 +181,7 @@ export class AuthService {
     try {
       return await getStoredToken();
     } catch (error) {
-      console.error('Error retrieving token:', error);
+      logger.error('Error retrieving token:', error);
       return null;
     }
   }
@@ -134,7 +193,7 @@ export class AuthService {
     try {
       return await getStoredUser();
     } catch (error) {
-      console.error('Error retrieving user:', error);
+      logger.error('Error retrieving user:', error);
       return null;
     }
   }
@@ -149,7 +208,7 @@ export class AuthService {
         throw new Error(response.data.message || 'Request failed');
       }
     } catch (error: any) {
-      console.error('Forgot password error:', error);
+      logger.error('Forgot password error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Request failed');
     }
   }
@@ -172,8 +231,23 @@ export class AuthService {
 
       return { user, token: newToken };
     } catch (error: any) {
-      console.error('Reset password error:', error);
+      logger.error('Reset password error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Reset failed');
+    }
+  }
+
+  /**
+   * Verify token with server
+   */
+  static async verifyToken(): Promise<User | null> {
+    try {
+      const response = await api.get('/users/me');
+      if (!response.data.success) {
+        return null;
+      }
+      return response.data.data;
+    } catch {
+      return null;
     }
   }
 

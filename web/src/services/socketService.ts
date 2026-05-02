@@ -6,13 +6,16 @@ import { useFriendStore } from '../store/friendStore';
 
 type SocketCallback = (data: unknown) => void;
 type FriendRequestSocketPayload = {
-  id?: string;
   _id?: string;
-  from?: { id?: string; _id?: string; name?: string; picture?: string };
+  id?: string;
+  type?: string;
+  content?: string;
   metadata?: {
     requestId?: string;
     from?: { id?: string; _id?: string; name?: string; picture?: string };
   };
+  senderId?: string;
+  createdAt?: string;
 };
 
 let socket: Socket | null = null;
@@ -71,18 +74,21 @@ export const socketService = {
 
     socket.on('friend_request', (data: FriendRequestSocketPayload) => {
       console.log('Friend request received:', data);
-      const from = data.from || data.metadata?.from;
-      const requesterId = from?.id || from?._id;
-      const requestId = data.id || data.metadata?.requestId || data._id;
+
+      const metadata = data.metadata || {};
+      const from = metadata.from;
+      const requestId = metadata.requestId || data._id || data.id;
+      const requesterId = from?.id || from?._id || data.senderId;
 
       if (!requestId || !requesterId || !from?.name) {
+        console.warn('Friend request payload missing required fields, emitting raw data');
         this.emitLocal('friend_request', data);
         return;
       }
-      
+
       useFriendStore.getState().setRequests([
         ...useFriendStore.getState().requests,
-        { 
+        {
           _id: requestId,
           requesterId: {
             _id: requesterId,
@@ -92,7 +98,7 @@ export const socketService = {
           status: 'pending',
         },
       ]);
-      
+
       this.emitLocal('friend_request', data);
     });
 

@@ -3,15 +3,17 @@ import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { User } from '../../modules/users/user.model';
 import { logger } from '../logger/logger';
-import { getJwtSecret } from '../config';
+import { getJwtSecret, getCorsOrigin } from '../config';
 
 let io: SocketIOServer;
 const userSocketMap = new Map<string, string>(); // userId -> socketId
 
 export const initSocket = (server: HttpServer) => {
+  const corsOrigins = getCorsOrigin();
+  
   io = new SocketIOServer(server, {
     cors: {
-      origin: '*',
+      origin: corsOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },

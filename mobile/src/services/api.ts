@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { clearStoredAuth, getStoredToken } from './authStorage';
+import { logger } from '../utils/logger';
 const OFFLINE_QUEUE_KEY = 'offline_queue';
 
 interface QueuedRequest {
@@ -23,6 +24,8 @@ class ApiService {
   private isProcessingQueue = false;
 
   constructor() {
+    logger.info('Api initializing', { baseURL: env.API_BASE_URL, socketURL: env.SOCKET_URL });
+
     this.api = axios.create({
       baseURL: env.API_BASE_URL,
       timeout: 10000, // 10 seconds
@@ -37,37 +40,116 @@ class ApiService {
   }
 
   private async setupInterceptors() {
+    let isRefreshing = false;
+    let failedQueue: Array<{
+      resolve: (value?: unknown) => void;
+      reject: (reason?: unknown) => void;
+    }> = [];
+
+    const processQueue = (error: Error | null, token: string | null = null) => {
+      failedQueue.forEach((prom) => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      failedQueue = [];
+    };
+
     // Request interceptor: attach JWT token
     this.api.interceptors.request.use(
-      async (config: InternalAxiosRequestConfig) => {
+        async (config: InternalAxiosRequestConfig) => {
+        logger.debug('Api request start', { method: config.method?.toUpperCase(), baseURL: config.baseURL, url: config.url });
+
         try {
           const token = await getStoredToken();
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
           }
         } catch (error) {
-          console.error('Error retrieving token:', error);
+          logger.error('Error retrieving token:', error);
         }
         return config;
       },
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor: handle errors and retries
+    // Response interceptor: handle errors with token refresh
     this.api.interceptors.response.use(
       (response: AxiosResponse) => response,
       async (error) => {
-        const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number });
+        const config = error.config as (InternalAxiosRequestConfig & {
+          _retry?: boolean;
+          _retryCount?: number
+        });
 
-        // Handle 401 errors
-        if (error.response?.status === 401) {
-          // Token expired or invalid
+        logger.error('Api response error', {
+          method: config?.method?.toUpperCase(),
+          baseURL: config?.baseURL,
+          url: config?.url,
+          code: error.code,
+          message: error.message,
+          status: error.response?.status,
+        });
+
+        if (error.response?.status === 401 && !config._retry) {
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then((token) => {
+                if (config.headers) {
+                  config.headers.Authorization = `Bearer ${token}`;
+                }
+                return this.api.request(config);
+              })
+              .catch((err) => Promise.reject(err));
+          }
+
+          config._retry = true;
+          isRefreshing = true;
+
+          try {
+            const { default: axiosImport } = await import('axios');
+            const { data } = await axiosImport.post(
+              `${this.api.defaults.baseURL}/auth/refresh`,
+              {},
+              { withCredentials: true }
+            );
+
+            const newToken = data.data.token;
+            const { setStoredToken } = await import('./authStorage');
+            await setStoredToken(newToken);
+
+            if (config.headers) {
+              config.headers.Authorization = `Bearer ${newToken}`;
+            }
+
+            processQueue(null, newToken);
+            return this.api.request(config);
+          } catch (refreshError) {
+            processQueue(new Error('Token refresh failed'), null);
+            await clearStoredAuth();
+            try {
+              const { useAuthStore } = await import('../store/authStore');
+              await useAuthStore.getState().logout();
+            } catch (logoutError) {
+              logger.error('Failed to clear auth state after refresh failure:', logoutError);
+            }
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
+          }
+        }
+
+        if (error.response?.status === 401 && config._retry) {
           await clearStoredAuth();
           try {
             const { useAuthStore } = await import('../store/authStore');
             await useAuthStore.getState().logout();
           } catch (logoutError) {
-            console.error('Failed to clear auth state after 401:', logoutError);
+            logger.error('Failed to clear auth state after 401:', logoutError);
           }
           return Promise.reject(error);
         }
@@ -82,7 +164,7 @@ class ApiService {
           config._retryCount = (config._retryCount || 0) + 1;
 
           const delay = this.retryDelay * Math.pow(2, config._retryCount - 1); // Exponential backoff
-          console.log(`Retrying request (${config._retryCount}/${this.maxRetries}) after ${delay}ms`);
+          logger.info(`Retrying request (${config._retryCount}/${this.maxRetries}) after ${delay}ms`);
 
           return new Promise((resolve) =>
             setTimeout(() => resolve(this.api.request(config)), delay)
@@ -91,7 +173,7 @@ class ApiService {
 
         // Handle offline scenario
         if (!this.isOnline && this.canQueueRequest(config)) {
-          console.log('Device offline, queuing request');
+          logger.info('Device offline, queuing request');
           await this.queueRequest(config);
           return Promise.reject(new Error('Device offline - request queued'));
         }
@@ -107,7 +189,7 @@ class ApiService {
   private setupNetworkListener() {
     NetInfo.addEventListener(state => {
       this.isOnline = state.isConnected ?? false;
-      console.log('Network status changed:', this.isOnline ? 'online' : 'offline');
+      logger.info('Network status changed:', this.isOnline ? 'online' : 'offline');
 
       if (this.isOnline && this.offlineQueue.length > 0) {
         this.processOfflineQueue();
@@ -153,7 +235,7 @@ class ApiService {
     }
 
     this.isProcessingQueue = true;
-    console.log(`Processing ${this.offlineQueue.length} queued requests`);
+    logger.info(`Processing ${this.offlineQueue.length} queued requests`);
 
     const failedRequests: QueuedRequest[] = [];
 
@@ -161,7 +243,7 @@ class ApiService {
       try {
         await this.executeRequest(request);
       } catch (error) {
-        console.error('Failed to process queued request:', request.id, error);
+        logger.error('Failed to process queued request:', request.id, error);
         failedRequests.push(request);
       }
     }
@@ -170,7 +252,7 @@ class ApiService {
     await this.saveOfflineQueue();
     this.isProcessingQueue = false;
 
-    console.log(`Queue processing complete. ${failedRequests.length} requests remain queued`);
+    logger.info(`Queue processing complete. ${failedRequests.length} requests remain queued`);
   }
 
   private async executeRequest(request: QueuedRequest): Promise<any> {
@@ -190,7 +272,7 @@ class ApiService {
     try {
       await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(this.offlineQueue));
     } catch (error) {
-      console.error('Failed to save offline queue:', error);
+      logger.error('Failed to save offline queue:', error);
     }
   }
 
@@ -199,10 +281,10 @@ class ApiService {
       const queueData = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
       if (queueData) {
         this.offlineQueue = JSON.parse(queueData);
-        console.log(`Loaded ${this.offlineQueue.length} queued requests`);
+        logger.info(`Loaded ${this.offlineQueue.length} queued requests`);
       }
     } catch (error) {
-      console.error('Failed to load offline queue:', error);
+      logger.error('Failed to load offline queue:', error);
     }
   }
 
@@ -211,16 +293,16 @@ class ApiService {
     if (error.response) {
       // Server responded with error status
       const { status, data } = error.response;
-      console.error(`API Error ${status}:`, data?.message || error.message);
+      logger.error(`API Error ${status}:`, data?.message || error.message);
 
       // You can emit events or update global state here
       // For example, show toast notifications
     } else if (error.request) {
       // Network error
-      console.error('Network Error:', error.message);
+      logger.error('Network Error:', error.message);
     } else {
       // Other error
-      console.error('Request Error:', error.message);
+      logger.error('Request Error:', error.message);
     }
   }
 

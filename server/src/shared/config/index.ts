@@ -15,8 +15,9 @@ const envSchema = z.object({
   REDIS_URI: z.string().default('redis://localhost:6379'),
 
   // JWT
-  JWT_SECRET: z.string().min(32).default('your-super-secret-jwt-key-change-in-production'),
-  JWT_EXPIRES_IN: z.string().default('30d'),
+  JWT_SECRET: z.string().min(64, 'JWT_SECRET must be at least 64 characters. Generate with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'),
+  JWT_EXPIRES_IN: z.string().default('15m'), // Access token: 15 minutes
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'), // Refresh token: 7 days
 
   // Google OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -35,7 +36,7 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.string().default('100'),
 
   // CORS
-  CORS_ORIGIN: z.string().default('*'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:8081'),
 });
 
 // Validate and parse environment variables
@@ -71,6 +72,10 @@ export const getJwtExpiresIn = (): string => {
   return config.JWT_EXPIRES_IN;
 };
 
+export const getJwtRefreshExpiresIn = (): string => {
+  return config.JWT_REFRESH_EXPIRES_IN;
+};
+
 export const getMongoUri = (): string => {
   return config.MONGO_URI;
 };
@@ -88,11 +93,8 @@ export const getRateLimitConfig = () => ({
   maxRequests: parseInt(config.RATE_LIMIT_MAX_REQUESTS, 10),
 });
 
-export const getCorsOrigin = (): string | string[] => {
-  if (config.CORS_ORIGIN === '*') {
-    return '*';
-  }
-  return config.CORS_ORIGIN.split(',').map(origin => origin.trim());
+export const getCorsOrigin = (): string[] => {
+  return config.CORS_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean);
 };
 
 export const getGoogleClientIds = () => ({

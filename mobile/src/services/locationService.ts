@@ -1,5 +1,6 @@
 import { api } from './api';
 import * as Location from 'expo-location';
+import { logger } from '../utils/logger';
 
 export interface LocationUpdateResponse {
   _id: string;
@@ -30,7 +31,7 @@ export class LocationService {
       const { status } = await Location.requestForegroundPermissionsAsync();
       return status === 'granted';
     } catch (error) {
-      console.error('Location permission request error:', error);
+      logger.error('Location permission request error:', error);
       return false;
     }
   }
@@ -50,7 +51,7 @@ export class LocationService {
       });
       return location;
     } catch (error: any) {
-      console.error('Get current location error:', error);
+      logger.error('Get current location error:', error);
       throw new Error(error.message || 'Failed to get location');
     }
   }
@@ -90,12 +91,12 @@ export class LocationService {
               onUpdate(result);
             }
           } catch (error) {
-            console.error('Location update failed:', error);
+            logger.error('Location update failed:', error);
           }
         }
       );
     } catch (error: any) {
-      console.error('Start location updates error:', error);
+      logger.error('Start location updates error:', error);
       throw new Error(error.message || 'Failed to start location updates');
     }
   }
@@ -122,7 +123,7 @@ export class LocationService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Update location error:', error);
+      logger.error('Update location error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Update location failed');
     }
   }

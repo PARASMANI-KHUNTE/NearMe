@@ -2,6 +2,7 @@ import React, { ErrorInfo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
+import { logger } from '../utils/logger';
 
 interface Props {
   children: React.ReactNode;
@@ -25,7 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service here
-    console.error('Uncaught error:', error, errorInfo);
+    logger.error('Uncaught error:', error, errorInfo);
   }
 
   handleRestart = async () => {

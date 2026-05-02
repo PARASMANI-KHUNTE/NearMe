@@ -28,12 +28,12 @@ export function DashboardPage() {
   const nearbyFriends = friends.filter((f) => f.status === 'nearby');
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10">
+    <div className="max-w-6xl mx-auto px-4 md:px-8 space-y-8">
       {/* Hero Status Section */}
       <section className="flex flex-col md:flex-row items-start justify-between gap-8">
         <div className="space-y-2">
-          <h1 className="text-4xl font-black tracking-tight text-[var(--text)]">Dashboard</h1>
-          <p className="text-[var(--text-muted)] text-lg">Manage your proximity presence and connections.</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[var(--text)]">Dashboard</h1>
+          <p className="text-[var(--text-muted)] text-base md:text-lg">Manage your proximity presence and connections.</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -76,13 +76,13 @@ export function DashboardPage() {
         <div className="lg:col-span-7 space-y-8">
 
           {/* Proximity Card */}
-          <Card variant="glass" className="p-10 border-none relative group overflow-hidden">
+          <Card variant="glass" className="p-6 md:p-10 border-none relative group overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
               <Zap className="w-32 h-32 text-primary" />
             </div>
             <div className="relative z-10">
               <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-2">Network Status</p>
-              <h2 className="text-6xl font-black text-primary mb-4 leading-none">{nearbyFriends.length}</h2>
+              <h2 className="text-5xl md:text-6xl font-black text-primary mb-4 leading-none">{nearbyFriends.length}</h2>
               <p className="text-xl font-bold mb-6 text-[var(--text)]">Friends Nearby Right Now</p>
 
               <div className="flex items-center gap-4 text-sm bg-white/5 rounded-2xl p-4 inline-flex">
@@ -95,7 +95,7 @@ export function DashboardPage() {
           </Card>
 
           {/* Settings Card */}
-          <Card className="p-10 border-[var(--border)]">
+          <Card className="p-6 md:p-10 border-[var(--border)]">
             <div className="flex items-center gap-3 mb-8">
               <Settings className="w-6 h-6 text-primary" />
               <h2 className="text-2xl font-bold">Privacy Controls</h2>
@@ -166,8 +166,8 @@ export function DashboardPage() {
             </div>
 
             <div className="space-y-4">
-              {nearbyFriends.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 rounded-3xl bg-surface-hover/30">
+                {nearbyFriends.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 md:py-20 text-center space-y-4 rounded-3xl bg-surface-hover/30">
                   <MapPin className="w-12 h-12 text-[var(--text-muted)] opacity-20" />
                   <p className="text-[var(--text-muted)] font-medium">No one is currently <br />in your radius.</p>
                 </div>

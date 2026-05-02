@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { Button } from '../components/Button';
 import * as Location from 'expo-location';
+import { logger } from '../utils/logger';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -20,7 +21,7 @@ const PermissionScreen = () => {
             try {
                 await LocationService.startLocationUpdates();
             } catch (error) {
-                console.log('[Permission] Deferred location updates:', (error as Error).message);
+                logger.info('[Permission] Deferred location updates:', (error as Error).message);
             }
         }
 
@@ -53,11 +54,11 @@ const PermissionScreen = () => {
                 NearMe needs your location to notify you when friends are nearby.
                 Your exact location is never shared with anyone, only your relative proximity.
             </Text>
-            
+
             <View style={styles.buttonContainer}>
-                <Button 
-                    title="Enable Location" 
-                    onPress={requestLocationPermission} 
+                <Button
+                    title="Enable Location"
+                    onPress={requestLocationPermission}
                 />
                 <Button
                     title="Continue Without Location"

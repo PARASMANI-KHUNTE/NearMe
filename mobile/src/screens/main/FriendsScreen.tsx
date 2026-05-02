@@ -19,6 +19,7 @@ import { FriendService, FriendRequest, FriendRequestUser } from '../../services/
 import { UserService } from '../../services/userService';
 import { User } from '../../services/authService';
 import { socketService } from '../../services/socketService';
+import { logger } from '../../utils/logger';
 import { useAuthStore } from '../../store/authStore';
 
 type TabType = 'friends' | 'requests' | 'search';
@@ -65,7 +66,7 @@ const FriendsScreen = () => {
       // Clear failed images when friends list refreshes
       setFailedImages(new Set());
     } catch (err: any) {
-      console.error('Load friends error:', err);
+      logger.error('Load friends error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +80,7 @@ const FriendsScreen = () => {
       // Clear failed images for request avatars
       setFailedImages(new Set());
     } catch (err: any) {
-      console.error('Load pending requests error:', err);
+      logger.error('Load pending requests error:', err);
     }
   }, [token]);
 

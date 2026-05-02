@@ -1,4 +1,5 @@
 import { api } from './api';
+import { logger } from '../utils/logger';
 import { User } from './authService';
 
 export interface FriendRequestUser {
@@ -37,7 +38,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Send friend request error:', error);
+        logger.error('Send friend request error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Send friend request failed');
     }
   }
@@ -53,7 +54,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Accept friend request error:', error);
+        logger.error('Accept friend request error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Accept friend request failed');
     }
   }
@@ -69,7 +70,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Reject friend request error:', error);
+        logger.error('Reject friend request error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Reject friend request failed');
     }
   }
@@ -85,7 +86,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Get friends error:', error);
+        logger.error('Get friends error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get friends failed');
     }
   }
@@ -101,7 +102,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Get pending requests error:', error);
+        logger.error('Get pending requests error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get pending requests failed');
     }
   }
@@ -114,7 +115,7 @@ export class FriendService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Get friends statuses error:', error);
+        logger.error('Get friends statuses error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get friends statuses failed');
     }
   }

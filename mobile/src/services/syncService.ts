@@ -1,6 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { cacheService, CACHE_KEYS } from './cacheService';
 import { api } from './api';
+import { logger } from '../utils/logger';
 
 interface SyncOperation {
   id: string;
@@ -41,10 +42,10 @@ class SyncService {
       const queueData = await cacheService.get<SyncOperation[]>('sync_queue');
       if (queueData) {
         this.syncQueue = queueData;
-        console.log(`Loaded ${this.syncQueue.length} pending sync operations`);
+        logger.info(`Loaded ${this.syncQueue.length} pending sync operations`);
       }
     } catch (error) {
-      console.error('Failed to load sync queue:', error);
+      logger.error('Failed to load sync queue:', error);
     }
   }
 
@@ -55,7 +56,7 @@ class SyncService {
     try {
       await cacheService.set('sync_queue', this.syncQueue, 24 * 60 * 60 * 1000); // 24 hours
     } catch (error) {
-      console.error('Failed to save sync queue:', error);
+      logger.error('Failed to save sync queue:', error);
     }
   }
 
@@ -80,7 +81,7 @@ class SyncService {
     await this.saveSyncQueue();
     this.notifyListeners();
 
-    console.log(`Queued ${type} operation for ${endpoint}`);
+    logger.info(`Queued ${type} operation for ${endpoint}`);
 
     // Try to sync immediately if online
     const netInfo = await NetInfo.fetch();
@@ -98,22 +99,22 @@ class SyncService {
     }
 
     this.isSyncing = true;
-    console.log(`Starting sync of ${this.syncQueue.length} operations`);
+    logger.info(`Starting sync of ${this.syncQueue.length} operations`);
 
     const failedOperations: SyncOperation[] = [];
 
     for (const operation of this.syncQueue) {
       try {
         await this.executeOperation(operation);
-        console.log(`Successfully synced ${operation.type} operation for ${operation.endpoint}`);
+        logger.info(`Successfully synced ${operation.type} operation for ${operation.endpoint}`);
       } catch (error) {
-        console.error(`Failed to sync operation ${operation.id}:`, error);
+        logger.error(`Failed to sync operation ${operation.id}:`, error);
 
         operation.retryCount++;
         if (operation.retryCount < 3) {
           failedOperations.push(operation);
         } else {
-          console.error(`Operation ${operation.id} exceeded max retries, discarding`);
+          logger.error(`Operation ${operation.id} exceeded max retries, discarding`);
         }
       }
     }
@@ -123,7 +124,7 @@ class SyncService {
     this.isSyncing = false;
     this.notifyListeners();
 
-    console.log(`Sync complete. ${failedOperations.length} operations remain queued`);
+    logger.info(`Sync complete. ${failedOperations.length} operations remain queued`);
   }
 
   /**
@@ -155,7 +156,7 @@ class SyncService {
       this.sync();
     }, intervalMs);
 
-    console.log(`Started periodic sync with ${intervalMs}ms interval`);
+    logger.info(`Started periodic sync with ${intervalMs}ms interval`);
   }
 
   /**
@@ -165,7 +166,7 @@ class SyncService {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
-      console.log('Stopped periodic sync');
+      logger.info('Stopped periodic sync');
     }
   }
 
@@ -191,7 +192,7 @@ class SyncService {
     this.syncQueue = [];
     await this.saveSyncQueue();
     this.notifyListeners();
-    console.log('Cleared sync queue');
+    logger.info('Cleared sync queue');
   }
 
   /**
@@ -232,9 +233,9 @@ class SyncService {
         await cacheService.set(CACHE_KEYS.NOTIFICATIONS, notificationsResponse.data.data);
       }
 
-      console.log('Cache refreshed successfully');
+      logger.info('Cache refreshed successfully');
     } catch (error) {
-      console.error('Failed to refresh cache:', error);
+      logger.error('Failed to refresh cache:', error);
     }
   }
 }

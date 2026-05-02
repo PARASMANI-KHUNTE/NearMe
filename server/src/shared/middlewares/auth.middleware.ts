@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../../modules/users/user.model';
 import { getJwtSecret } from '../config';
+import { AuthService } from '../../modules/auth/auth.service';
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -19,6 +20,14 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     const jwtSecret = getJwtSecret();
 
     const decoded = jwt.verify(token, jwtSecret) as { id: string };
+    
+    // Check if token is blacklisted
+    const isBlacklisted = await AuthService.isTokenBlacklisted(decoded.id);
+    if (isBlacklisted) {
+      res.status(401).json({ success: false, message: 'Unauthorized - Token has been revoked' });
+      return;
+    }
+
     const user = await User.findById(decoded.id).select('-__v');
 
     if (!user) {

@@ -5,6 +5,7 @@ import { Toggle } from '../../components/ui/Toggle';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { useLocationStore } from '../../store/locationStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { socketService } from '../../services/socketService';
 import { authService } from '../../services/authService';
 import { api } from '../../services/api';
@@ -13,6 +14,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { shareLocation, radius, invisibleMode, setShareLocation, setRadius, setInvisibleMode } = useLocationStore();
+  const { muteNotifications, setMuteNotifications } = useNotificationStore();
   const [uniqueId, setUniqueId] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
 
@@ -144,6 +146,13 @@ export function ProfilePage() {
                 description="Hide your presence completely while still tracking others"
                 checked={invisibleMode}
                 onChange={setInvisibleMode}
+              />
+
+              <Toggle
+                label="Mute Notifications"
+                description="Disable sound alerts for proximity alerts"
+                checked={muteNotifications}
+                onChange={setMuteNotifications}
               />
 
               <div className="space-y-3">

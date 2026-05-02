@@ -4,6 +4,8 @@ import { getMongoUri } from '../config';
 
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
+mongoose.set('bufferCommands', false);
+
 export const connectDB = async () => {
   if (mongoose.connection.readyState === 1) {
     return mongoose;
@@ -17,14 +19,10 @@ export const connectDB = async () => {
     try {
       const mongoUri = getMongoUri();
       const opts = {
-        serverSelectionTimeoutMS: 10000,
+        serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
         family: 4,
       };
-
-      if (process.env.NODE_ENV === 'production') {
-        mongoose.set('bufferCommands', false);
-      }
 
       await mongoose.connect(mongoUri, opts);
       logger.info('✅ MongoDB Connected Successfully');

@@ -31,6 +31,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true,
     });
 
     this.setupInterceptors();
@@ -39,10 +40,27 @@ class ApiService {
   }
 
   private setupInterceptors() {
+    let isRefreshing = false;
+    let failedQueue: Array<{
+      resolve: (value?: unknown) => void;
+      reject: (reason?: unknown) => void;
+    }> = [];
+
+    const processQueue = (error: Error | null, token: string | null = null) => {
+      failedQueue.forEach((prom) => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      failedQueue = [];
+    };
+
     // Request interceptor - attach JWT
     this.api.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -51,7 +69,7 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor - handle errors
+    // Response interceptor - handle errors with token refresh
     this.api.interceptors.response.use(
       (response) => response,
       async (error: AxiosError<ApiResponse>) => {
@@ -60,13 +78,57 @@ class ApiService {
           _retryCount?: number;
         });
 
-        // Handle 401 errors
-        if (error.response?.status === 401) {
-          // Clear auth data on unauthorized
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+        if (error.response?.status === 401 && !config._retry) {
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then((token) => {
+                if (config.headers) {
+                  config.headers.Authorization = `Bearer ${token}`;
+                }
+                return this.api.request(config);
+              })
+              .catch((err) => Promise.reject(err));
+          }
 
-          // Only redirect if not already on login
+          config._retry = true;
+          isRefreshing = true;
+
+          try {
+            const { data } = await axios.post(
+              `${this.api.defaults.baseURL}/auth/refresh`,
+              {},
+              { withCredentials: true }
+            );
+
+            const newToken = data.data.token;
+            sessionStorage.setItem('token', newToken);
+
+            if (config.headers) {
+              config.headers.Authorization = `Bearer ${newToken}`;
+            }
+
+            processQueue(null, newToken);
+            return this.api.request(config);
+          } catch (refreshError) {
+            processQueue(new Error('Token refresh failed'), null);
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
+          }
+        }
+
+        if (error.response?.status === 401 && config._retry) {
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+
           if (!window.location.pathname.includes('/login')) {
             window.location.href = '/login';
           }

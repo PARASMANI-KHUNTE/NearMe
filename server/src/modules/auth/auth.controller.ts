@@ -12,7 +12,15 @@ export class AuthController {
         return;
       }
 
-      const { user, token } = await AuthService.register({ email, password, name });
+      const { user, token, refreshToken } = await AuthService.register({ email, password, name });
+
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
       res.status(201).json({
         success: true,
@@ -36,7 +44,15 @@ export class AuthController {
         return;
       }
 
-      const { user, token } = await AuthService.login(email, password);
+      const { user, token, refreshToken } = await AuthService.login(email, password);
+
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
       res.status(200).json({
         success: true,
@@ -60,7 +76,15 @@ export class AuthController {
         return;
       }
 
-      const { user, token } = await AuthService.verifyGoogleTokenAndLogin(idToken);
+      const { user, token, refreshToken } = await AuthService.verifyGoogleTokenAndLogin(idToken);
+
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
       res.status(200).json({
         success: true,
@@ -102,7 +126,16 @@ export class AuthController {
         return;
       }
 
-      const { user, token: newToken } = await AuthService.resetPassword(token, password);
+      const { user, token: newToken, refreshToken } = await AuthService.resetPassword(token, password);
+
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
       res.status(200).json({
         success: true,
         data: { user, token: newToken },
@@ -115,12 +148,54 @@ export class AuthController {
 
   static async logout(req: Request, res: Response): Promise<void> {
     try {
+      const userId = (req as any).user?._id;
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (userId) {
+        await AuthService.logout(userId.toString(), refreshToken);
+      }
+
+      // Clear the refresh token cookie
+      res.clearCookie('refreshToken');
+
       res.status(200).json({
         success: true,
         message: 'Logged out successfully',
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  static async refresh(req: Request, res: Response): Promise<void> {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (!refreshToken) {
+        res.status(401).json({ success: false, message: 'Refresh token is required' });
+        return;
+      }
+
+      const { token, refreshToken: newRefreshToken } = await AuthService.refreshAccessToken(refreshToken);
+
+      // Set new refresh token as httpOnly cookie
+      res.cookie('refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      res.status(200).json({
+        success: true,
+        data: { token },
+        message: 'Token refreshed successfully',
+      });
+    } catch (error: any) {
+      res.status(401).json({
+        success: false,
+        message: error.message || 'Token refresh failed',
+      });
     }
   }
 }

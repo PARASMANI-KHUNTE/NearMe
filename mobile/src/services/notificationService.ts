@@ -1,4 +1,5 @@
 import { api } from './api';
+import { logger } from '../utils/logger';
 
 export type NotificationType = 'friend_request' | 'friend_accepted' | 'proximity_alert' | 'meet_request';
 
@@ -25,7 +26,7 @@ export class NotificationService {
       }
       return response.data.data;
     } catch (error: any) {
-      console.error('Get notifications error:', error);
+      logger.error('Get notifications error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Get notifications failed');
     }
   }
@@ -40,7 +41,7 @@ export class NotificationService {
         throw new Error(response.data.message || 'Failed to mark as read');
       }
     } catch (error: any) {
-      console.error('Mark as read error:', error);
+      logger.error('Mark as read error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Mark as read failed');
     }
   }
@@ -55,7 +56,7 @@ export class NotificationService {
         throw new Error(response.data.message || 'Failed to mark all as read');
       }
     } catch (error: any) {
-      console.error('Mark all as read error:', error);
+      logger.error('Mark all as read error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Mark all as read failed');
     }
   }

@@ -75,4 +75,7 @@ router.post('/reset-password', authRateLimiter, validateRequest(resetPasswordSch
 // POST /api/auth/logout - Logout user
 router.post('/logout', requireAuth, AuthController.logout);
 
+// POST /api/auth/refresh - Refresh access token
+router.post('/refresh', AuthController.refresh);
+
 export default router;

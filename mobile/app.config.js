@@ -1,4 +1,49 @@
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
+
+const loadLocalEnv = () => {
+  const envPath = path.join(__dirname, '.env');
+
+  if (!fs.existsSync(envPath)) {
+    return {};
+  }
+
+  return fs
+    .readFileSync(envPath, 'utf8')
+    .split(/\r?\n/)
+    .reduce((values, line) => {
+      const trimmed = line.trim();
+
+      if (!trimmed || trimmed.startsWith('#')) {
+        return values;
+      }
+
+      const separatorIndex = trimmed.indexOf('=');
+      if (separatorIndex === -1) {
+        return values;
+      }
+
+      const key = trimmed.slice(0, separatorIndex).trim();
+      const rawValue = trimmed.slice(separatorIndex + 1).trim();
+      const value = rawValue.replace(/^['"]|['"]$/g, '');
+
+      if (key) {
+        values[key] = value;
+      }
+
+      return values;
+    }, {});
+};
+
+const localEnv = loadLocalEnv();
+
+const readConfigValue = (key) => {
+  const value = process.env[key] || localEnv[key];
+  const trimmed = value?.trim();
+
+  return trimmed || undefined;
+};
 
 const expoConfig = {
   name: 'nearme',
@@ -79,7 +124,7 @@ const scoreInterface = ({ name, address }) => {
 };
 
 const getLocalServerIp = () => {
-  const configuredIp = process.env.EXPO_PUBLIC_SERVER_IP?.trim();
+  const configuredIp = readConfigValue('EXPO_PUBLIC_SERVER_IP');
   if (configuredIp) {
     return configuredIp;
   }
@@ -99,8 +144,8 @@ const getLocalServerIp = () => {
 const mapsPluginConfig = [
   'react-native-maps',
   {
-    androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY,
-    iosGoogleMapsApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY,
+    androidGoogleMapsApiKey: readConfigValue('GOOGLE_MAPS_ANDROID_API_KEY'),
+    iosGoogleMapsApiKey: readConfigValue('GOOGLE_MAPS_IOS_API_KEY'),
   },
 ];
 
@@ -113,6 +158,8 @@ const pluginsWithoutMaps = basePlugins.filter((plugin) => {
   return Array.isArray(plugin) ? plugin[0] !== 'react-native-maps' : true;
 });
 const serverIp = getLocalServerIp() ?? expoConfig.extra?.serverIp;
+const apiUrl = readConfigValue('EXPO_PUBLIC_API_URL');
+const socketUrl = readConfigValue('EXPO_PUBLIC_SOCKET_URL');
 
 module.exports = {
   expo: {
@@ -120,6 +167,8 @@ module.exports = {
     ...(scheme.length ? { scheme } : {}),
     extra: {
       ...expoConfig.extra,
+      ...(apiUrl ? { apiUrl } : {}),
+      ...(socketUrl ? { socketUrl } : {}),
       ...(serverIp ? { serverIp } : {}),
     },
     plugins: [...pluginsWithoutMaps, mapsPluginConfig],

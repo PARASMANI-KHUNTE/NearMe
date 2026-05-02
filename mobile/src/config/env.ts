@@ -6,6 +6,11 @@ interface EnvConfig {
   SOCKET_URL: string;
 }
 
+const readConfigValue = (value?: string | null): string | null => {
+  const trimmed = value?.trim();
+  return trimmed || null;
+};
+
 const extractHostFromUri = (value?: string | null): string | null => {
   if (!value) {
     return null;
@@ -48,12 +53,18 @@ const getEnvConfig = (): EnvConfig => {
   const expoConfig = (Constants.expoConfig || Constants.manifest) as any;
   const configuredHost = extractHostFromUri(expoConfig?.extra?.serverIp);
   const autoDetectedHost = getAutoDetectedHost();
+  const configuredApiUrl =
+    readConfigValue(expoConfig?.extra?.apiUrl) ||
+    readConfigValue(process.env.EXPO_PUBLIC_API_URL);
+  const configuredSocketUrl =
+    readConfigValue(expoConfig?.extra?.socketUrl) ||
+    readConfigValue(process.env.EXPO_PUBLIC_SOCKET_URL);
 
   // 1. Prioritize explicit environment variables (e.g. from EAS or .env)
-  if (process.env.EXPO_PUBLIC_API_URL && process.env.EXPO_PUBLIC_SOCKET_URL) {
+  if (configuredApiUrl && configuredSocketUrl) {
     return {
-      API_BASE_URL: process.env.EXPO_PUBLIC_API_URL.trim(),
-      SOCKET_URL: process.env.EXPO_PUBLIC_SOCKET_URL.trim(),
+      API_BASE_URL: configuredApiUrl,
+      SOCKET_URL: configuredSocketUrl,
     };
   }
 

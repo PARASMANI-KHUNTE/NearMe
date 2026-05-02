@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { socketService, SocketNotification, RawFriendRequestSocketPayload } from '../services/socketService';
 import { NotificationService } from '../services/notificationService';
+import { logger } from '../utils/logger';
 
 type AppNotification = SocketNotification & { read: boolean };
 
@@ -50,14 +51,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         ...n,
         read: n.read || false
       })) as AppNotification[];
-      
-      set({ 
+
+      set({
         notifications: mapped,
         unreadCount: mapped.filter(n => !n.read).length,
         isLoading: false
       });
     } catch (err) {
-      console.error('Fetch notifications error:', err);
+      logger.error('Fetch notifications error:', err);
       set({ isLoading: false });
     }
   },
@@ -68,7 +69,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       unreadCount: state.unreadCount + 1,
     }));
 
-    console.log('New notification:', notification.content);
+    // log only in development
+    logger.info('New notification:', notification.content);
   },
 
   markAsRead: async (id: string) => {

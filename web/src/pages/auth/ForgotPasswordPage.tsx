@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
@@ -30,10 +30,20 @@ type ResetForm = z.infer<typeof resetPasswordSchema>;
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<'forgot' | 'reset'>('forgot');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const urlToken = searchParams.get('token');
+  const urlEmail = searchParams.get('email');
+
+  useEffect(() => {
+    if (urlToken) {
+      setStep('reset');
+    }
+  }, [urlToken]);
 
   const {
     register: forgotRegister,
@@ -47,9 +57,19 @@ export function ForgotPasswordPage() {
     register: resetRegister,
     handleSubmit: handleResetSubmit,
     formState: { errors: resetErrors },
+    setValue: setResetValue,
   } = useForm<ResetForm>({
     resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      token: urlToken || '',
+    },
   });
+
+  useEffect(() => {
+    if (urlToken) {
+      setResetValue('token', urlToken);
+    }
+  }, [urlToken, setResetValue]);
 
   const onForgotSubmit = async (data: ForgotForm) => {
     try {
@@ -121,12 +141,21 @@ export function ForgotPasswordPage() {
         </form>
       ) : (
         <form onSubmit={handleResetSubmit(onResetSubmit)} className="space-y-5 sm:space-y-6">
-          <Input
-            label="Reset Token"
-            placeholder="Paste token from email"
-            {...resetRegister('token')}
-            error={resetErrors.token?.message}
-          />
+          {urlToken ? (
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-[var(--text)]">Reset Token</label>
+              <div className="px-4 py-3 bg-success/5 border-2 border-success/20 rounded-xl text-success/80 font-mono text-sm break-all">
+                Token received from email link ✓
+              </div>
+            </div>
+          ) : (
+            <Input
+              label="Reset Token"
+              placeholder="Paste token from email"
+              {...resetRegister('token')}
+              error={resetErrors.token?.message}
+            />
+          )}
           <Input
             label="New Password"
             type="password"
