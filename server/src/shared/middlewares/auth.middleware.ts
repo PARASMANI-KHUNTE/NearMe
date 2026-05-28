@@ -22,7 +22,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     const decoded = jwt.verify(token, jwtSecret) as { id: string };
     
     // Check if token is blacklisted
-    const isBlacklisted = await AuthService.isTokenBlacklisted(decoded.id);
+    const isBlacklisted = await AuthService.isTokenBlacklisted(token);
     if (isBlacklisted) {
       res.status(401).json({ success: false, message: 'Unauthorized - Token has been revoked' });
       return;

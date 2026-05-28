@@ -99,4 +99,62 @@ export class EmailService {
       throw new Error('Failed to send password reset email');
     }
   }
+
+  static async sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
+    const subject = 'Verify Your NearMe Email';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #6366f1; }
+            .content { background: #f9fafb; border-radius: 12px; padding: 30px; }
+            .code { background: #fff; border: 2px dashed #e5e7eb; border-radius: 8px; padding: 20px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #6366f1; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #9ca3af; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <span class="logo">NearMe</span>
+            </div>
+            <div class="content">
+              <h2>Verify Your Email Address</h2>
+              <p>Hi ${name},</p>
+              <p>Welcome to NearMe! Use the 6-digit verification code below to verify your email address and unlock all proximity and social features:</p>
+              <div class="code">${code}</div>
+              <p>This code will expire in 24 hours.</p>
+              <p style="color: #9ca3af; font-size: 12px;">If you didn't sign up for NearMe, please ignore this email.</p>
+            </div>
+            <div class="footer">
+              <p>NearMe — Stay connected with friends nearby</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const transporter = this.getTransporter();
+
+    if (!transporter) {
+      logger.info(`[MOCK EMAIL] To: ${to}, Subject: ${subject}, Code: ${code}`);
+      return;
+    }
+
+    try {
+      await transporter.sendMail({
+        from: getSmtpConfig().from,
+        to,
+        subject,
+        html,
+      });
+      logger.info(`Verification email sent to ${to}`);
+    } catch (error) {
+      logger.error(error, `Failed to send email to ${to}`);
+      throw new Error('Failed to send verification email');
+    }
+  }
 }

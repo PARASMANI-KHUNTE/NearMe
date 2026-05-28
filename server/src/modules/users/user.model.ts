@@ -7,6 +7,9 @@ export interface IUser extends Document {
   password?: string;
   name: string;
   picture?: string;
+  isEmailVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   settings: {
@@ -26,6 +29,9 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, select: false },
     name: { type: String, required: true },
     picture: { type: String },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, select: false },
+    emailVerificationExpires: { type: Date },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date },
     settings: {

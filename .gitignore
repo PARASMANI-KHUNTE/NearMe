@@ -39,7 +39,10 @@ lerna-debug.log*
 
 # Mobile / Expo / RN
 **/.expo/
+**/.expo-export-check/
 **/.metro-health-check*
+**/*.tsbuildinfo
+**/.npm-cache/
 **/*.jks
 **/*.p8
 **/*.p12

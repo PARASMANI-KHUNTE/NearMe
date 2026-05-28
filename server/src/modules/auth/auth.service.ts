@@ -7,6 +7,7 @@ import { User, IUser } from '../users/user.model';
 import { getJwtSecret, getJwtExpiresIn, getGoogleClientIds, getJwtRefreshExpiresIn } from '../../shared/config';
 import { EmailService } from '../../shared/services/email.service';
 import { redisClient } from '../../shared/redis/connection';
+import { logger } from '../../shared/logger/logger';
 
 const client = new OAuth2Client();
 
@@ -23,6 +24,9 @@ const generateUniqueId = (): string => {
 export class AuthService {
   static async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string; refreshToken: string }> {
     const { email, password, name } = userData;
+    if (!email || !password || !name) {
+      throw new Error('Email, password and name are required');
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -39,18 +43,30 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password!, 10);
 
+    // Generate verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     // Create user
     const user = await User.create({
       email,
       password: hashedPassword,
       name,
       uniqueId,
+      isEmailVerified: false,
+      emailVerificationToken: verificationCode,
+      emailVerificationExpires: verificationExpires,
     });
 
     const token = this.generateToken(user._id.toString());
     const refreshToken = this.generateRefreshToken(user._id.toString());
 
     await this.storeRefreshToken(user._id.toString(), refreshToken);
+
+    // Dispatch verification email asynchronously
+    EmailService.sendVerificationEmail(email, name, verificationCode).catch((err) => {
+      logger.error(err, `Failed to send verification email to ${email}`);
+    });
 
     // Remove password from returned user object
     const userObj = user.toObject();
@@ -64,6 +80,10 @@ export class AuthService {
     const user = await User.findOne({ email }).select('+password');
     if (!user || !user.password) {
       throw new Error('Invalid email or password');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new Error('Please verify your email address before logging in');
     }
 
     // Check password
@@ -170,6 +190,11 @@ export class AuthService {
         shouldSave = true;
       }
 
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        shouldSave = true;
+      }
+
       if (shouldSave) {
         await user.save();
       }
@@ -187,6 +212,7 @@ export class AuthService {
         name: name || 'User',
         picture,
         uniqueId,
+        isEmailVerified: true,
       });
     }
 
@@ -222,7 +248,7 @@ export class AuthService {
       await redisClient.set(key, token, { EX: expirySeconds });
     } catch {
       // Redis not available, skip storing refresh token
-      console.warn('Redis not available, refresh token not stored');
+      logger.warn('Redis not available, refresh token not stored');
     }
   }
 
@@ -259,13 +285,20 @@ export class AuthService {
     }
   }
 
-  static async logout(userId: string, refreshToken?: string): Promise<void> {
+  static async logout(token: string, refreshToken?: string): Promise<void> {
+    let userId: string | null = null;
     try {
-      // Blacklist the current access token
-      const key = `blacklist:${userId}`;
-      await redisClient.set(key, '1', { EX: 15 * 60 }); // Blacklist for 15 minutes (access token expiry)
+      const decoded = jwt.decode(token) as { id: string; exp: number } | null;
+      if (decoded && decoded.id && decoded.exp) {
+        userId = decoded.id;
+        const remainingTime = decoded.exp - Math.floor(Date.now() / 1000);
+        if (remainingTime > 0) {
+          const key = `blacklist:${token}`;
+          await redisClient.set(key, '1', { EX: remainingTime });
+        }
+      }
     } catch {
-      // Redis not available, skip blacklisting
+      // Ignore decoding errors
     }
 
     // Remove refresh token if provided
@@ -273,26 +306,79 @@ export class AuthService {
       try {
         const decoded = jwt.verify(refreshToken, getJwtSecret()) as { id: string };
         await redisClient.del(`refresh_token:${decoded.id}`);
+        if (!userId) {
+          userId = decoded.id;
+        }
       } catch {
         // Token might already be invalid or Redis not available
       }
     }
 
     // Always remove the stored refresh token for this user
-    try {
-      await redisClient.del(`refresh_token:${userId}`);
-    } catch {
-      // Redis not available
+    if (userId) {
+      try {
+        await redisClient.del(`refresh_token:${userId}`);
+      } catch {
+        // Redis not available
+      }
     }
   }
 
-  static async isTokenBlacklisted(userId: string): Promise<boolean> {
+  static async isTokenBlacklisted(token: string): Promise<boolean> {
     try {
-      const result = await redisClient.get(`blacklist:${userId}`);
+      const result = await redisClient.get(`blacklist:${token}`);
       return result !== null;
     } catch {
       // Redis not available, assume token is not blacklisted
       return false;
     }
+  }
+
+  static async verifyEmail(email: string, code: string): Promise<IUser> {
+    const user = await User.findOne({ email }).select('+emailVerificationToken +emailVerificationExpires');
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    if (!user.emailVerificationToken || user.emailVerificationToken !== code) {
+      throw new Error('Invalid verification code');
+    }
+
+    if (!user.emailVerificationExpires || user.emailVerificationExpires < new Date()) {
+      throw new Error('Verification code has expired');
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    const userObj = user.toObject();
+    delete (userObj as any).password;
+    return userObj as IUser;
+  }
+
+  static async resendVerificationCode(email: string): Promise<void> {
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    user.emailVerificationToken = verificationCode;
+    user.emailVerificationExpires = verificationExpires;
+    await user.save();
+
+    await EmailService.sendVerificationEmail(email, user.name, verificationCode);
   }
 }

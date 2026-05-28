@@ -56,6 +56,15 @@ const resetPasswordSchema = z.object({
     .regex(/[0-9]/),
 });
 
+const verifyEmailSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: z.string().length(6, 'Verification code must be 6 digits'),
+});
+
+const resendVerificationSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
 // Routes
 // POST /api/auth/register - Register new user
 router.post('/register', authRateLimiter, validateRequest(registerSchema, 'body'), AuthController.register);
@@ -71,6 +80,12 @@ router.post('/forgot-password', authRateLimiter, validateRequest(forgotPasswordS
 
 // POST /api/auth/reset-password - Reset password with token
 router.post('/reset-password', authRateLimiter, validateRequest(resetPasswordSchema, 'body'), AuthController.resetPassword);
+
+// POST /api/auth/verify-email - Verify user email address
+router.post('/verify-email', validateRequest(verifyEmailSchema, 'body'), AuthController.verifyEmail);
+
+// POST /api/auth/resend-verification - Resend verification email
+router.post('/resend-verification', authRateLimiter, validateRequest(resendVerificationSchema, 'body'), AuthController.resendVerification);
 
 // POST /api/auth/logout - Logout user
 router.post('/logout', requireAuth, AuthController.logout);

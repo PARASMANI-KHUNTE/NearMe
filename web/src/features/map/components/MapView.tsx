@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, Circle, Marker, Tooltip } from 'react-leaflet';
+import L from 'leaflet';
 import { UserMarker } from './UserMarker';
 import { FriendZone } from './FriendZone';
 import { RoutePolyline } from './RoutePolyline';
@@ -8,6 +9,7 @@ import { useUserLocation } from '../hooks/useUserLocation';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { MapPin } from 'lucide-react';
 import { useThemeStore } from '../../../store/themeStore';
+import { useLocationStore } from '../../../store/locationStore';
 
 interface MapViewProps {
   height?: string;
@@ -40,10 +42,35 @@ function MapController({ userLocation, activeRouteGeometry }: MapControllerProps
   return null;
 }
 
+function createFriendMarkerIcon(name: string) {
+  return L.divIcon({
+    className: 'custom-friend-marker',
+    html: `
+      <div style="
+        width: 36px;
+        height: 36px;
+        background: rgba(245, 158, 11, 0.9);
+        border: 2px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        color: white;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+      ">${name.charAt(0).toUpperCase()}</div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
+
 export function MapView({ height = '100%' }: MapViewProps) {
   const { location, error, isLoading } = useUserLocation();
   const { nearbyFriends, activeRoute, setUserLocation } = useMapStore();
   const theme = useThemeStore((state) => state.theme);
+  const radius = useLocationStore((state) => state.radius);
 
   useEffect(() => {
     if (location) {
@@ -100,6 +127,21 @@ export function MapView({ height = '100%' }: MapViewProps) {
 
         {location && <UserMarker position={{ lat: location.lat, lng: location.lng }} />}
 
+        {/* Detection radius circle */}
+        {location && (
+          <Circle
+            center={[location.lat, location.lng]}
+            radius={radius}
+            pathOptions={{
+              color: '#4F46E5',
+              fillColor: '#4F46E5',
+              fillOpacity: 0.08,
+              weight: 1.5,
+              dashArray: '4, 4',
+            }}
+          />
+        )}
+
         {nearbyFriends.map((friend) => (
           <FriendZone
             key={friend.id}
@@ -107,6 +149,25 @@ export function MapView({ height = '100%' }: MapViewProps) {
             position={friend.approximateLocation}
             name={friend.name}
           />
+        ))}
+
+        {/* Friend markers with initials */}
+        {nearbyFriends.map((friend) => (
+          <Marker
+            key={`marker-${friend.id}`}
+            position={[friend.approximateLocation.lat, friend.approximateLocation.lng]}
+            icon={createFriendMarkerIcon(friend.name)}
+          >
+            <Tooltip direction="top" offset={[0, -18]}>
+              <div style={{ textAlign: 'center', padding: '2px 4px' }}>
+                <strong>{friend.name}</strong>
+                <br />
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                  {friend.distance ? `~${friend.distance}m away` : 'Nearby friend'}
+                </span>
+              </div>
+            </Tooltip>
+          </Marker>
         ))}
 
         {activeRoute && <RoutePolyline positions={activeRoute.geometry} />}

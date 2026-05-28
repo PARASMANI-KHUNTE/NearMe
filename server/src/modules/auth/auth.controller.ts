@@ -1,6 +1,7 @@
 // AuthController handles HTTP requests for authentication
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { logger } from '../../shared/logger/logger';
 
 export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
@@ -92,7 +93,7 @@ export class AuthController {
         message: 'Login successful',
       });
     } catch (error: any) {
-      console.error('Google login error:', error);
+      logger.error(error, 'Google login error');
       res.status(401).json({
         success: false,
         message: error.message || 'Authentication failed',
@@ -148,11 +149,19 @@ export class AuthController {
 
   static async logout(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user?._id;
+      const authHeader = req.headers.authorization;
+      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
       const refreshToken = req.cookies?.refreshToken;
 
-      if (userId) {
-        await AuthService.logout(userId.toString(), refreshToken);
+      if (token) {
+        await AuthService.logout(token, refreshToken);
+      } else {
+        // Fallback to cookie user if Bearer token not provided but user is in request
+        const userId = (req as any).user?._id;
+        if (userId) {
+          // If we only have userId (e.g. from session or auth middleware), we can't blacklist the specific access token easily unless we pass it, but this is a safe fallback
+          await AuthService.logout(userId.toString(), refreshToken);
+        }
       }
 
       // Clear the refresh token cookie
@@ -195,6 +204,53 @@ export class AuthController {
       res.status(401).json({
         success: false,
         message: error.message || 'Token refresh failed',
+      });
+    }
+  }
+
+  static async verifyEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, code } = req.body;
+
+      if (!email || !code) {
+        res.status(400).json({ success: false, message: 'Email and code are required' });
+        return;
+      }
+
+      const user = await AuthService.verifyEmail(email, code);
+
+      res.status(200).json({
+        success: true,
+        data: { user },
+        message: 'Email verified successfully',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Email verification failed',
+      });
+    }
+  }
+
+  static async resendVerification(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ success: false, message: 'Email is required' });
+        return;
+      }
+
+      await AuthService.resendVerificationCode(email);
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification code resent successfully',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to resend verification code',
       });
     }
   }

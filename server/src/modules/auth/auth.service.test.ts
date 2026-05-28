@@ -8,6 +8,20 @@ import bcrypt from 'bcryptjs';
 jest.mock('../users/user.model');
 jest.mock('bcryptjs');
 jest.mock('google-auth-library');
+jest.mock('../../shared/services/email.service', () => ({
+  EmailService: {
+    sendVerificationEmail: () => Promise.resolve(),
+    sendPasswordResetEmail: () => Promise.resolve(),
+  },
+}));
+jest.mock('../../shared/redis/connection', () => {
+  const mRedis = {
+    set: jest.fn(() => Promise.resolve('OK')),
+    get: jest.fn(() => Promise.resolve(null)),
+    del: jest.fn(() => Promise.resolve(1)),
+  };
+  return { redisClient: mRedis };
+});
 
 describe('AuthService', () => {
   beforeEach(() => {
@@ -167,6 +181,7 @@ describe('AuthService', () => {
         email: mockPayload.email,
         name: mockPayload.name,
         picture: mockPayload.picture,
+        isEmailVerified: true,
       };
 
       const mockTicket = {
@@ -281,6 +296,168 @@ describe('AuthService', () => {
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       expect(token.split('.')).toHaveLength(3); // JWT has 3 parts
+    });
+  });
+
+  describe('email verification', () => {
+    describe('verifyEmail', () => {
+      test('should verify email successfully with correct code', async () => {
+        const email = 'test@example.com';
+        const code = '123456';
+        
+        const save = jest.fn().mockResolvedValue(undefined);
+        const mockUser = {
+          _id: 'user123',
+          email,
+          name: 'Test User',
+          isEmailVerified: false,
+          emailVerificationToken: code,
+          emailVerificationExpires: new Date(Date.now() + 10000),
+          save,
+          toObject: function() { return this; }
+        };
+
+        (User.findOne as jest.Mock).mockReturnValue({
+          select: jest.fn().mockResolvedValue(mockUser),
+        });
+
+        const result = await AuthService.verifyEmail(email, code);
+        
+        expect(result.isEmailVerified).toBe(true);
+        expect(result.emailVerificationToken).toBeUndefined();
+        expect(result.emailVerificationExpires).toBeUndefined();
+        expect(save).toHaveBeenCalled();
+      });
+
+      test('should throw error if user does not exist', async () => {
+        (User.findOne as jest.Mock).mockReturnValue({
+          select: jest.fn().mockResolvedValue(null),
+        });
+
+        await expect(AuthService.verifyEmail('nonexistent@example.com', '123456')).rejects.toThrow('User not found');
+      });
+
+      test('should throw error if email already verified', async () => {
+        const mockUser = {
+          _id: 'user123',
+          email: 'test@example.com',
+          isEmailVerified: true,
+          toObject: function() { return this; }
+        };
+
+        (User.findOne as jest.Mock).mockReturnValue({
+          select: jest.fn().mockResolvedValue(mockUser),
+        });
+
+        await expect(AuthService.verifyEmail('test@example.com', '123456')).rejects.toThrow('Email is already verified');
+      });
+
+      test('should throw error if verification code is incorrect', async () => {
+        const mockUser = {
+          _id: 'user123',
+          email: 'test@example.com',
+          isEmailVerified: false,
+          emailVerificationToken: '123456',
+          emailVerificationExpires: new Date(Date.now() + 10000),
+          toObject: function() { return this; }
+        };
+
+        (User.findOne as jest.Mock).mockReturnValue({
+          select: jest.fn().mockResolvedValue(mockUser),
+        });
+
+        await expect(AuthService.verifyEmail('test@example.com', '654321')).rejects.toThrow('Invalid verification code');
+      });
+
+      test('should throw error if verification code has expired', async () => {
+        const mockUser = {
+          _id: 'user123',
+          email: 'test@example.com',
+          isEmailVerified: false,
+          emailVerificationToken: '123456',
+          emailVerificationExpires: new Date(Date.now() - 10000),
+          toObject: function() { return this; }
+        };
+
+        (User.findOne as jest.Mock).mockReturnValue({
+          select: jest.fn().mockResolvedValue(mockUser),
+        });
+
+        await expect(AuthService.verifyEmail('test@example.com', '123456')).rejects.toThrow('Verification code has expired');
+      });
+    });
+
+    describe('resendVerificationCode', () => {
+      test('should resend verification code successfully', async () => {
+        const email = 'test@example.com';
+        const save = jest.fn().mockResolvedValue(undefined);
+        const mockUser = {
+          _id: 'user123',
+          email,
+          name: 'Test User',
+          isEmailVerified: false,
+          save
+        };
+
+        (User.findOne as jest.Mock).mockResolvedValue(mockUser);
+
+        await AuthService.resendVerificationCode(email);
+        
+        expect(mockUser.emailVerificationToken).toBeDefined();
+        expect(mockUser.emailVerificationToken).toHaveLength(6);
+        expect(mockUser.emailVerificationExpires).toBeDefined();
+        expect(save).toHaveBeenCalled();
+      });
+
+      test('should throw error if user not found', async () => {
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+
+        await expect(AuthService.resendVerificationCode('nonexistent@example.com')).rejects.toThrow('User not found');
+      });
+
+      test('should throw error if already verified', async () => {
+        const mockUser = {
+          _id: 'user123',
+          email: 'test@example.com',
+          isEmailVerified: true
+        };
+
+        (User.findOne as jest.Mock).mockResolvedValue(mockUser);
+
+        await expect(AuthService.resendVerificationCode('test@example.com')).rejects.toThrow('Email is already verified');
+      });
+    });
+  });
+
+  describe('token revocation blacklist redesign', () => {
+    test('should blacklist token with remaining validity time on logout', async () => {
+      const { redisClient } = require('../../shared/redis/connection');
+      const token = (AuthService as any).generateToken('user123');
+      
+      await AuthService.logout(token);
+      
+      expect(redisClient.set).toHaveBeenCalledWith(
+        expect.stringContaining('blacklist:'),
+        '1',
+        expect.objectContaining({ EX: expect.any(Number) })
+      );
+    });
+
+    test('should identify blacklisted token', async () => {
+      const { redisClient } = require('../../shared/redis/connection');
+      redisClient.get.mockResolvedValueOnce('1');
+
+      const isBlacklisted = await AuthService.isTokenBlacklisted('some-revoked-token');
+      expect(isBlacklisted).toBe(true);
+      expect(redisClient.get).toHaveBeenCalledWith('blacklist:some-revoked-token');
+    });
+
+    test('should return false if token is not blacklisted', async () => {
+      const { redisClient } = require('../../shared/redis/connection');
+      redisClient.get.mockResolvedValueOnce(null);
+
+      const isBlacklisted = await AuthService.isTokenBlacklisted('some-valid-token');
+      expect(isBlacklisted).toBe(false);
     });
   });
 });
