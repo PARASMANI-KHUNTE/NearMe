@@ -28,6 +28,7 @@ interface UserSettings {
   radius?: number;
   locationSharingEnabled?: boolean;
   invisibleMode?: boolean;
+  muteNotifications?: boolean;
 }
 
 interface AppState {
@@ -38,6 +39,8 @@ interface AppState {
   radius: number;
   shareLocation: boolean;
   invisibleMode: boolean;
+  preciseSharing: boolean;
+  muteNotifications: boolean;
   themeMode: ThemeMode;
 
   // Actions
@@ -48,6 +51,8 @@ interface AppState {
   setRadius: (radius: number) => void;
   setShareLocation: (share: boolean) => void;
   setInvisibleMode: (invisible: boolean) => void;
+  setPreciseSharing: (precise: boolean) => void;
+  setMuteNotifications: (muted: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
   syncPreferences: (settings?: UserSettings | null) => void;
   toggleThemeMode: () => void;
@@ -88,9 +93,11 @@ export const useAppStore = create<AppState>()(
       token: null,
       friends: [],
       notifications: [],
-      radius: 5000, // Default 5km
+      radius: 5000,
       shareLocation: true,
       invisibleMode: false,
+      preciseSharing: false,
+      muteNotifications: false,
       themeMode: 'night',
 
       setUser: (user) => set({ user }),
@@ -100,6 +107,8 @@ export const useAppStore = create<AppState>()(
       setRadius: (radius) => set({ radius }),
       setShareLocation: (share) => set({ shareLocation: share }),
       setInvisibleMode: (invisible) => set({ invisibleMode: invisible }),
+      setPreciseSharing: (precise) => set({ preciseSharing: precise }),
+      setMuteNotifications: (muted) => set({ muteNotifications: muted }),
       setThemeMode: (mode) => set({ themeMode: mode }),
       syncPreferences: (settings) =>
         set((state) => {
@@ -110,11 +119,15 @@ export const useAppStore = create<AppState>()(
           const nextRadius = settings.radius ?? state.radius;
           const nextShareLocation = settings.locationSharingEnabled ?? state.shareLocation;
           const nextInvisibleMode = settings.invisibleMode ?? state.invisibleMode;
+          const nextPreciseSharing = settings.preciseSharing ?? state.preciseSharing;
+          const nextMuteNotifications = settings.muteNotifications ?? state.muteNotifications;
 
           if (
             nextRadius === state.radius &&
             nextShareLocation === state.shareLocation &&
-            nextInvisibleMode === state.invisibleMode
+            nextInvisibleMode === state.invisibleMode &&
+            nextPreciseSharing === state.preciseSharing &&
+            nextMuteNotifications === state.muteNotifications
           ) {
             return state;
           }
@@ -123,6 +136,8 @@ export const useAppStore = create<AppState>()(
             radius: nextRadius,
             shareLocation: nextShareLocation,
             invisibleMode: nextInvisibleMode,
+            preciseSharing: nextPreciseSharing,
+            muteNotifications: nextMuteNotifications,
           };
         }),
       toggleThemeMode: () => set((state) => ({
@@ -140,6 +155,8 @@ export const useAppStore = create<AppState>()(
         radius: state.radius,
         shareLocation: state.shareLocation,
         invisibleMode: state.invisibleMode,
+        preciseSharing: state.preciseSharing,
+        muteNotifications: state.muteNotifications,
         themeMode: state.themeMode,
       }),
     }

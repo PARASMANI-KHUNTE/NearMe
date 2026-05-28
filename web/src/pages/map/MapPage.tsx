@@ -1,14 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCcw, Users } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useFriendStore } from '../../store/friendStore';
+import { useLocationStore } from '../../store/locationStore';
+import { useAuthStore } from '../../store/authStore';
 import { MapView } from '../../features/map/components/MapView';
+import { useMapStore } from '../../features/map/types/mapStore';
+import { locationService } from '../../services/locationService';
+import { logger } from '../../utils/logger';
+import type { FriendZoneData } from '../../types';
+
+const REFRESH_INTERVAL = 60000;
 
 export function MapPage() {
   const { friends } = useFriendStore();
+  const { shareLocation, radius } = useLocationStore();
+  const { token } = useAuthStore();
+  const { setNearbyFriends, userLocation } = useMapStore();
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nearbyCount, setNearbyCount] = useState(0);
 
   const nearbyFriendsList = friends.filter((f) => f.status === 'nearby');
+
+  const fetchNearbyUsers = useCallback(async () => {
+    if (!token || !shareLocation || !userLocation) {
+      setNearbyFriends([]);
+      setNearbyCount(0);
+      return;
+    }
+    try {
+      setIsRefreshing(true);
+      const { lat, lng } = userLocation;
+      const users = await locationService.getNearbyUsers({
+        latitude: lat,
+        longitude: lng,
+        radius,
+      });
+      const mapped: FriendZoneData[] = users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        approximateLocation: { lat: u.latitude ?? lat, lng: u.longitude ?? lng },
+        distance: u.distance,
+      }));
+      setNearbyFriends(mapped);
+      setNearbyCount(mapped.length);
+    } catch (err) {
+      logger.error('Failed to fetch nearby users:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [token, shareLocation, radius, userLocation, setNearbyFriends]);
+
+  useEffect(() => {
+    fetchNearbyUsers();
+    const interval = setInterval(fetchNearbyUsers, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchNearbyUsers]);
 
   return (
     <div className="p-4 md:p-8 h-full flex flex-col">
@@ -16,6 +65,24 @@ export function MapPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)]">Map</h1>
           <p className="text-[var(--text-muted)] text-sm">Real-time proximity visualization</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {nearbyCount > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-sm font-semibold text-[var(--primary)]">
+              <Users className="w-3.5 h-3.5" />
+              {nearbyCount} nearby
+            </div>
+          )}
+          <Button
+            variant="glass"
+            size="sm"
+            onClick={fetchNearbyUsers}
+            isLoading={isRefreshing}
+            className="rounded-full"
+          >
+            <RefreshCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 

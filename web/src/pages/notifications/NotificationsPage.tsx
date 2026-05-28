@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { RefreshCcw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -48,6 +49,19 @@ export function NotificationsPage() {
     }
   };
 
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await notificationService.getNotifications();
+      setNotifications(data);
+    } catch {
+      setLoadError('Could not load notifications.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setNotifications]);
+
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
@@ -68,11 +82,22 @@ export function NotificationsPage() {
           <p className="text-[var(--text-muted)] text-sm mt-1">Real-time alerts and updates</p>
         </div>
 
-        {unreadNotifications.length > 0 && (
-          <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead}>
-            Mark All Read
+        <div className="flex items-center gap-2">
+          <Button
+            variant="glass"
+            size="sm"
+            onClick={handleRefresh}
+            className="rounded-full"
+            isLoading={isLoading}
+          >
+            <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-        )}
+          {unreadNotifications.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={handleMarkAllAsRead}>
+              Mark All Read
+            </Button>
+          )}
+        </div>
       </div>
 
       {loadError && (

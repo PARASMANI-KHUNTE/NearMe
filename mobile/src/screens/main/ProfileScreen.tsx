@@ -21,7 +21,7 @@ import { socketService } from '../../services/socketService';
 import * as Clipboard from 'expo-clipboard';
 
 const ProfileScreen = () => {
-  const { invisibleMode, setInvisibleMode, shareLocation, setShareLocation, themeMode, toggleThemeMode, syncPreferences } = useAppStore();
+  const { invisibleMode, setInvisibleMode, shareLocation, setShareLocation, muteNotifications, setMuteNotifications, themeMode, toggleThemeMode, syncPreferences } = useAppStore();
   const { user, logout, token, setUser } = useAuthStore();
   const { theme: appTheme, isDay } = useAppTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -255,6 +255,32 @@ const ProfileScreen = () => {
               }
               trackColor={{ false: appTheme.colors.border, true: appTheme.colors.primary }}
               thumbColor={invisibleMode ? appTheme.colors.accent : '#aaa'}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Mute Notifications */}
+          <View style={styles.row}>
+            <View style={styles.labelRow}>
+              <Ionicons name="notifications-off-outline" size={18} color={appTheme.colors.accent} />
+              <View style={{ marginLeft: 10 }}>
+                <Text style={[styles.label, { color: appTheme.colors.text }]}>Mute Notifications</Text>
+                <Text style={[styles.labelSub, { color: appTheme.colors.text }]}>
+                  Disable sound alerts for proximity alerts
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={muteNotifications}
+              onValueChange={(value) => {
+                setMuteNotifications(value);
+                UserService.updateSettings({ muteNotifications: value } as any).catch(() => {
+                  setMuteNotifications(!value);
+                });
+              }}
+              trackColor={{ false: appTheme.colors.border, true: appTheme.colors.primary }}
+              thumbColor={muteNotifications ? appTheme.colors.accent : '#aaa'}
             />
           </View>
 

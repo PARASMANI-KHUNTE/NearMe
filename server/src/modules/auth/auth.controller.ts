@@ -13,20 +13,12 @@ export class AuthController {
         return;
       }
 
-      const { user, token, refreshToken } = await AuthService.register({ email, password, name });
-
-      // Set refresh token as httpOnly cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      const { user } = await AuthService.register({ email, password, name });
 
       res.status(201).json({
         success: true,
-        data: { user, token },
-        message: 'User registered successfully',
+        data: { user },
+        message: 'User registered successfully. Please verify your email.',
       });
     } catch (error: any) {
       res.status(400).json({

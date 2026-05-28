@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
   Signup: undefined;
+  VerifyEmail: { email: string };
   ForgotPassword: { token?: string } | undefined;
   Permission: undefined;
   MainTabs: undefined;
@@ -22,6 +23,7 @@ export type BottomTabParamList = {
 export type SplashScreenProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 export type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
 export type SignupScreenProps = NativeStackScreenProps<RootStackParamList, 'Signup'>;
+export type VerifyEmailScreenProps = NativeStackScreenProps<RootStackParamList, 'VerifyEmail'>;
 export type ForgotPasswordScreenProps = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 export type PermissionScreenProps = NativeStackScreenProps<RootStackParamList, 'Permission'>;
 

@@ -115,20 +115,14 @@ export const useAuthStore = create<AuthState>()(
         logger.debug('[AuthStore] register start', { email: data.email });
         set({ isLoading: true, error: null });
         try {
-          const { user, token } = await AuthService.register(data);
-          logger.info('[AuthStore] register success', { hasUser: !!user, hasToken: !!token });
+          await AuthService.register(data);
+          logger.info('[AuthStore] register success');
           set({
-            user,
-            token,
-            isAuthenticated: true,
             isLoading: false,
             error: null,
           });
         } catch (error: any) {
           set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
             isLoading: false,
             error: error.message || 'Registration failed',
           });

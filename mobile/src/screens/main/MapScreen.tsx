@@ -6,14 +6,16 @@ import {
   Text,
   TouchableOpacity,
   Platform,
+  ScrollView,
 } from 'react-native';
-import MapView, { Circle, Marker, Callout, UrlTile } from 'react-native-maps';
+import MapView, { Circle, Marker, Callout, UrlTile, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import { OSRMService, RouteData } from '../../services/osrmService';
 import { logger } from '../../utils/logger';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -46,6 +48,9 @@ const MapScreen = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<NearbyUser | null>(null);
+  const [activeRoute, setActiveRoute] = useState<RouteData | null>(null);
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
   const { radius, shareLocation } = useAppStore();
   const { token } = useAuthStore();
   const { theme } = useAppTheme();
@@ -138,8 +143,6 @@ const MapScreen = () => {
 
   const centerOnUser = () => {
     if (location && mapRef.current) {
-      // 1 degree latitude is ~111km.
-      // Calculate delta to show the entire radius circle + some padding
       const delta = (radius * 2.5) / 111320;
 
       mapRef.current.animateToRegion({
@@ -149,6 +152,50 @@ const MapScreen = () => {
         longitudeDelta: Math.max(delta, 0.005),
       }, 600);
     }
+  };
+
+  const handleSelectFriend = async (friend: NearbyUser) => {
+    if (selectedFriend?.id === friend.id) {
+      setSelectedFriend(null);
+      setActiveRoute(null);
+      return;
+    }
+    setSelectedFriend(friend);
+    setActiveRoute(null);
+
+    if (!location) return;
+
+    setIsRouteLoading(true);
+    try {
+      const route = await OSRMService.getRoute(
+        location.coords.latitude,
+        location.coords.longitude,
+        friend.latitude,
+        friend.longitude
+      );
+      setActiveRoute(route);
+    } catch (err) {
+      logger.error('Failed to fetch route:', err);
+    } finally {
+      setIsRouteLoading(false);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedFriend(null);
+    setActiveRoute(null);
+  };
+
+  const formatDistance = (meters: number) => {
+    if (meters >= 1000) return `${(meters / 1000).toFixed(1)}km`;
+    return `${Math.round(meters)}m`;
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}min`;
   };
 
   if (errorMsg) {
@@ -206,15 +253,28 @@ const MapScreen = () => {
           strokeWidth={1.5}
         />
 
+        {/* Route polyline */}
+        {activeRoute && activeRoute.geometry.length > 0 && (
+          <Polyline
+            coordinates={activeRoute.geometry.map(coord => ({
+              latitude: coord[0],
+              longitude: coord[1],
+            }))}
+            strokeColor="#38BDF8"
+            strokeWidth={4}
+            lineDashPattern={[0]}
+          />
+        )}
+
         {/* Nearby user blurred circles */}
         {nearbyUsers.map((u) => (
           <Circle
             key={`circle-${u.id}`}
             center={{ latitude: u.latitude, longitude: u.longitude }}
             radius={u.precisionMeters ?? 200}
-            fillColor="rgba(245, 158, 11, 0.18)"
-            strokeColor="rgba(245, 158, 11, 0.6)"
-            strokeWidth={1}
+            fillColor={selectedFriend?.id === u.id ? 'rgba(56, 189, 248, 0.25)' : 'rgba(245, 158, 11, 0.18)'}
+            strokeColor={selectedFriend?.id === u.id ? 'rgba(56, 189, 248, 0.8)' : 'rgba(245, 158, 11, 0.6)'}
+            strokeWidth={selectedFriend?.id === u.id ? 2 : 1}
           />
         ))}
 
@@ -224,12 +284,13 @@ const MapScreen = () => {
             key={`marker-${u.id}`}
             coordinate={{ latitude: u.latitude, longitude: u.longitude }}
             tracksViewChanges={false}
+            onPress={() => handleSelectFriend(u)}
           >
             <View style={styles.markerContainer}>
-              <View style={styles.markerBubble}>
+              <View style={[styles.markerBubble, selectedFriend?.id === u.id && styles.markerBubbleSelected]}>
                 <Text style={styles.markerLetter}>{u.name?.[0]?.toUpperCase() || '?'}</Text>
               </View>
-              <View style={styles.markerArrow} />
+              <View style={[styles.markerArrow, selectedFriend?.id === u.id && styles.markerArrowSelected]} />
             </View>
             <Callout tooltip>
               <View style={styles.calloutContainer}>
@@ -256,6 +317,47 @@ const MapScreen = () => {
         </Text>
       </View>
 
+      {/* Friend Selection Panel */}
+      {selectedFriend && (
+        <View style={[styles.selectionPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <View style={styles.selectionHeader}>
+            <Text style={[styles.selectionTitle, { color: theme.colors.text }]}>
+              Route to {selectedFriend.name}
+            </Text>
+            <TouchableOpacity onPress={clearSelection} activeOpacity={0.7}>
+              <Ionicons name="close-circle" size={22} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
+          {isRouteLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginVertical: 8 }} />
+          ) : activeRoute ? (
+            <View style={styles.routeInfo}>
+              <View style={styles.routeStat}>
+                <Ionicons name="navigate-outline" size={14} color={theme.colors.accent} />
+                <Text style={[styles.routeStatText, { color: theme.colors.text }]}>
+                  {formatDistance(activeRoute.distance)}
+                </Text>
+              </View>
+              <View style={styles.routeStat}>
+                <Ionicons name="time-outline" size={14} color={theme.colors.accent} />
+                <Text style={[styles.routeStatText, { color: theme.colors.text }]}>
+                  {formatDuration(activeRoute.duration)}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.routeError, { color: theme.colors.text }]}>
+              Could not calculate route
+            </Text>
+          )}
+          {selectedFriend.distance && (
+            <Text style={[styles.routeDistance, { color: theme.colors.text }]}>
+              Friend is ~{formatDistance(selectedFriend.distance)} away
+            </Text>
+          )}
+        </View>
+      )}
+
       <View style={[styles.attributionBadge, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <Text style={[styles.attributionText, { color: theme.colors.text }]}>
           Map tiles (c) OpenStreetMap contributors
@@ -269,6 +371,28 @@ const MapScreen = () => {
           <Text style={[styles.countText, { color: theme.colors.accent }]}>
             {nearbyUsers.length} nearby
           </Text>
+        </View>
+      )}
+
+      {/* Nearby Friends Sidebar */}
+      {nearbyUsers.length > 0 && !selectedFriend && (
+        <View style={[styles.sidebar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={[styles.sidebarTitle, { color: theme.colors.text }]}>
+              Nearby ({nearbyUsers.length})
+            </Text>
+            {nearbyUsers.map((u) => (
+              <TouchableOpacity
+                key={u.id}
+                style={[styles.sidebarItem, { borderBottomColor: theme.colors.border }]}
+                onPress={() => handleSelectFriend(u)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sidebarItemName, { color: theme.colors.text }]}>{u.name}</Text>
+                <Ionicons name="navigate-outline" size={16} color={theme.colors.accent} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -426,6 +550,14 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  markerBubbleSelected: {
+    backgroundColor: 'rgba(56, 189, 248, 0.9)',
+    borderColor: '#38BDF8',
+    shadowColor: '#38BDF8',
+  },
+  markerArrowSelected: {
+    borderTopColor: 'rgba(56, 189, 248, 0.9)',
+  },
   markerLetter: {
     color: '#fff',
     fontWeight: 'bold',
@@ -441,6 +573,86 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderTopColor: 'rgba(245,158,11,0.9)',
     marginTop: -1,
+  },
+  selectionPanel: {
+    position: 'absolute',
+    top: 100,
+    left: 60,
+    right: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  selectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  selectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  routeInfo: {
+    flexDirection: 'row',
+    gap: 16,
+    marginVertical: 4,
+  },
+  routeStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  routeStatText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  routeError: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginVertical: 4,
+  },
+  routeDistance: {
+    fontSize: 12,
+    opacity: 0.5,
+    marginTop: 4,
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    width: 160,
+    maxHeight: 300,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  sidebarTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  sidebarItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+  },
+  sidebarItemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
   sharingDisabledBanner: {
     position: 'absolute',

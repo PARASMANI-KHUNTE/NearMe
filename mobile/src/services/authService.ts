@@ -120,20 +120,13 @@ export class AuthService {
   /**
    * Register with email and password
    */
-  static async register(data: { email: string; password: string; name: string }): Promise<{ user: User; token: string }> {
+  static async register(data: { email: string; password: string; name: string }): Promise<void> {
     try {
       const response = await api.post<AuthResponse>('/auth/register', data);
 
       if (!response.data.success) {
         throw new Error(response.data.message || 'Registration failed');
       }
-
-      const { user, token } = response.data.data;
-
-      await setStoredToken(token);
-      await setStoredUser(user);
-
-      return { user, token };
     } catch (error: any) {
       logger.error('Registration error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Registration failed');
@@ -235,7 +228,29 @@ export class AuthService {
       throw new Error(error.response?.data?.message || error.message || 'Reset failed');
     }
   }
+  static async verifyEmail(email: string, code: string): Promise<void> {
+    try {
+      const response = await api.post<{ success: boolean; message?: string }>('/auth/verify-email', { email, code });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Verification failed');
+      }
+    } catch (error: any) {
+      logger.error('Email verification error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Verification failed');
+    }
+  }
 
+  static async resendVerification(email: string): Promise<void> {
+    try {
+      const response = await api.post<{ success: boolean; message?: string }>('/auth/resend-verification', { email });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Request failed');
+      }
+    } catch (error: any) {
+      logger.error('Resend verification error:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Request failed');
+    }
+  }
   /**
    * Verify token with server
    */

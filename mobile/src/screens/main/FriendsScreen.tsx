@@ -159,6 +159,33 @@ const FriendsScreen = () => {
     }
   };
 
+  const handleRemoveFriend = (friendId: string, friendName: string) => {
+    Alert.alert(
+      'Remove Friend',
+      `Are you sure you want to remove ${friendName} from your friends?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { api } = await import('../../services/api');
+              await api.delete(`/friends/${friendId}`);
+              setFriends(prev => prev.filter(f => (f.id || f._id) !== friendId));
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to remove friend');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMessageFriend = (friendName: string) => {
+    Alert.alert('Messaging', `Chat with ${friendName} coming soon!`);
+  };
+
   const handleToggleProximity = async (friendId: string) => {
     const current = proximityConsent[friendId] ?? true;
     const next = !current;
@@ -193,6 +220,7 @@ const FriendsScreen = () => {
 
   const renderFriend = ({ item }: { item: FriendWithStatus }) => {
     const hasProximity = proximityConsent[item.id || item._id || ''] ?? true;
+    const friendId = item.id || item._id || '';
     return (
     <View style={styles.friendRow}>
       {renderAvatar(item.name, item.picture)}
@@ -201,14 +229,26 @@ const FriendsScreen = () => {
         <Text style={styles.friendEmail}>{item.email}</Text>
       </View>
       <TouchableOpacity
+        style={[styles.iconBtn, styles.messageBtn]}
+        onPress={() => handleMessageFriend(item.name)}
+      >
+        <Ionicons name="chatbubble-outline" size={16} color={theme.colors.primary} />
+      </TouchableOpacity>
+      <TouchableOpacity
         style={[styles.proximityBtn, hasProximity ? styles.proximityBtnOn : styles.proximityBtnOff]}
-        onPress={() => handleToggleProximity(item.id || item._id || '')}
+        onPress={() => handleToggleProximity(friendId)}
       >
         <Ionicons
           name={hasProximity ? 'location-outline' : 'ban-outline'}
           size={16}
           color={hasProximity ? theme.colors.secondary : theme.colors.border}
         />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.iconBtn, styles.removeBtn]}
+        onPress={() => handleRemoveFriend(friendId, item.name)}
+      >
+        <Ionicons name="person-remove-outline" size={16} color="#ef4444" />
       </TouchableOpacity>
       <View style={[styles.statusDot, item.status === 'nearby' ? styles.dotNearby : styles.dotOffline]}>
         <Text style={[styles.statusText, item.status === 'nearby' ? styles.textNearby : styles.textOffline]}>
@@ -590,6 +630,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(56,189,248,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(56,189,248,0.3)',
+  },
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  messageBtn: {
+    backgroundColor: 'rgba(79,70,229,0.1)',
+    borderColor: 'rgba(79,70,229,0.25)',
+  },
+  removeBtn: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderColor: 'rgba(239,68,68,0.25)',
   },
   proximityBtn: {
     width: 32,

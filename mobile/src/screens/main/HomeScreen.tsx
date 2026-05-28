@@ -21,11 +21,13 @@ import { LocationService } from '../../services/locationService';
 import { UserService } from '../../services/userService';
 import { api } from '../../services/api';
 import { logger } from '../../utils/logger';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const RADIUS_OPTIONS = [100, 500, 1000, 2000, 3000, 5000];
 
 const HomeScreen = () => {
-  const { shareLocation, setShareLocation, radius, setRadius, syncPreferences } = useAppStore();
+  const { shareLocation, setShareLocation, radius, setRadius, preciseSharing, setPreciseSharing, syncPreferences } = useAppStore();
+  const { theme: appTheme } = useAppTheme();
   const { user, token, setUser } = useAuthStore();
   const [isRadiusModalOpen, setIsRadiusModalOpen] = useState(false);
   const [selectedRadius, setSelectedRadius] = useState(radius);
@@ -253,6 +255,31 @@ const HomeScreen = () => {
           </View>
           <Ionicons name="chevron-down" size={20} color={theme.colors.text} />
         </Pressable>
+      </View>
+
+      {/* High Precision Mode */}
+      <View style={styles.sectionGlass}>
+        <View style={styles.row}>
+          <View style={styles.titleRow}>
+            <Ionicons name="speedometer-outline" size={18} color={theme.colors.accent} />
+            <Text style={styles.label}>High Precision Mode</Text>
+          </View>
+          <Switch
+            value={preciseSharing}
+            onValueChange={(value) => {
+              setPreciseSharing(value);
+              UserService.updateSettings({ preciseSharing: value } as any).catch(() => {
+                setPreciseSharing(!value);
+              });
+            }}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={preciseSharing ? theme.colors.accent : theme.colors.text}
+            disabled={!shareLocation}
+          />
+        </View>
+        <Text style={styles.subText}>
+          Increase accuracy temporarily for active meetups.
+        </Text>
       </View>
 
       {/* Nearby Friends Card */}

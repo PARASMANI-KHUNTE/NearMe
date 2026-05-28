@@ -41,7 +41,7 @@ export function SignupPage() {
         email: data.email,
         password: data.password,
       });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (error: unknown) {
       setError('root', {
         message: error instanceof Error ? error.message : 'Registration failed',

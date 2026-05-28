@@ -84,6 +84,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
         password: data.password,
         name: data.name,
       });
+      navigation.navigate('VerifyEmail', { email: data.email });
     } catch (err) {
       logger.error('Signup error:', err);
     }

@@ -22,7 +22,7 @@ const generateUniqueId = (): string => {
 };
 
 export class AuthService {
-  static async register(userData: Partial<IUser>): Promise<{ user: IUser; token: string; refreshToken: string }> {
+  static async register(userData: Partial<IUser>): Promise<{ user: IUser }> {
     const { email, password, name } = userData;
     if (!email || !password || !name) {
       throw new Error('Email, password and name are required');
@@ -58,11 +58,6 @@ export class AuthService {
       emailVerificationExpires: verificationExpires,
     });
 
-    const token = this.generateToken(user._id.toString());
-    const refreshToken = this.generateRefreshToken(user._id.toString());
-
-    await this.storeRefreshToken(user._id.toString(), refreshToken);
-
     // Dispatch verification email asynchronously
     EmailService.sendVerificationEmail(email, name, verificationCode).catch((err) => {
       logger.error(err, `Failed to send verification email to ${email}`);
@@ -72,7 +67,7 @@ export class AuthService {
     const userObj = user.toObject();
     delete (userObj as any).password;
 
-    return { user: userObj as IUser, token, refreshToken };
+    return { user: userObj as IUser };
   }
 
   static async login(email: string, password: string): Promise<{ user: IUser; token: string; refreshToken: string }> {

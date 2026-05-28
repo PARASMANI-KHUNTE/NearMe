@@ -24,14 +24,11 @@ interface LoginRequest {
 }
 
 export const authService = {
-  async register(data: RegisterRequest): Promise<GoogleAuthResponse> {
-    const response = await api.post<ApiResponse<GoogleAuthResponse>>('/api/auth/register', data);
+  async register(data: RegisterRequest): Promise<void> {
+    const response = await api.post<ApiResponse>('/api/auth/register', data);
 
-    if (response.data.success && response.data.data) {
-      const { token, user } = response.data.data;
-      useAuthStore.getState().setToken(token);
-      useAuthStore.getState().setUser(user);
-      return { token, user };
+    if (response.data.success) {
+      return;
     }
 
     throw new Error(response.data.message || 'Registration failed');
@@ -106,6 +103,20 @@ export const authService = {
     }
 
     throw new Error(response.data.message || 'Password reset failed');
+  },
+
+  async verifyEmail(email: string, code: string): Promise<void> {
+    const response = await api.post<ApiResponse>('/api/auth/verify-email', { email, code });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Verification failed');
+    }
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    const response = await api.post<ApiResponse>('/api/auth/resend-verification', { email });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to resend verification code');
+    }
   },
 };
 
