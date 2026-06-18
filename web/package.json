@@ -19,7 +19,7 @@
     "postcss": "^8.5.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-hook-form": "^7.73.1",
+    "react-hook-form": "^7.74.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.14.2",
     "socket.io-client": "^4.8.3",
