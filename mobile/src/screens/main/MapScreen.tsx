@@ -15,6 +15,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import { geofenceService } from '../../services/geofenceService';
 import { OSRMService, RouteData } from '../../services/osrmService';
 import { logger } from '../../utils/logger';
 
@@ -51,49 +52,87 @@ const MapScreen = () => {
   const [selectedFriend, setSelectedFriend] = useState<NearbyUser | null>(null);
   const [activeRoute, setActiveRoute] = useState<RouteData | null>(null);
   const [isRouteLoading, setIsRouteLoading] = useState(false);
+  const [geofenceInitialized, setGeofenceInitialized] = useState(false);
+  const [geofenceStatus, setGeofenceStatus] = useState<{ geofenceCount: number; preciseTracking: string[] } | null>(null);
   const { radius, shareLocation } = useAppStore();
   const { token } = useAuthStore();
   const { theme } = useAppTheme();
   const mapRef = useRef<MapView>(null);
 
-  // Watch location for real-time updates
+  // Initialize geofencing and get initial location
   useEffect(() => {
-    let subscription: Location.LocationSubscription | null = null;
+    let isMounted = true;
+    let foregroundWatch: Location.LocationSubscription | null = null;
+    let statusInterval: NodeJS.Timeout | null = null;
 
-    (async () => {
+    const setupMap = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          setErrorMsg('Permission to access location was denied');
+          if (isMounted) setErrorMsg('Permission to access location was denied');
           return;
         }
 
+        // Get initial location
         const initialLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        setLocation(initialLocation);
+        if (isMounted) setLocation(initialLocation);
 
-        subscription = await Location.watchPositionAsync(
+        // Start low-frequency foreground watch for map centering (not for proximity)
+        foregroundWatch = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Balanced,
-            timeInterval: 5000,
-            distanceInterval: 10,
+            timeInterval: 60000, // 1 minute - just for map updates
+            distanceInterval: 100, // 100 meters
           },
           (newLocation) => {
-            setLocation(newLocation);
+            if (isMounted) setLocation(newLocation);
           }
         );
-      } catch (err) {
-        setErrorMsg('Failed to watch location');
-      }
-    })();
 
-    return () => {
-      if (subscription) {
-        subscription.remove();
+        // Initialize geofencing if sharing is enabled
+        if (shareLocation && token) {
+          await geofenceService.initialize();
+          await geofenceService.refreshGeofences(token);
+
+          // Subscribe to geofence events
+          const unsubscribe = geofenceService.subscribe((event) => {
+            logger.info(`[Map] Geofence ${event.type} for ${event.friendName}`);
+            // Refresh nearby users when entering/exiting regions
+            if (isMounted) fetchNearbyUsers();
+          });
+
+          // Update geofence status periodically
+          statusInterval = setInterval(() => {
+            if (isMounted) {
+              setGeofenceStatus(geofenceService.getStatus());
+            }
+          }, 5000);
+
+          // Store unsubscribe for cleanup
+          (setupMap as any).unsubscribe = unsubscribe;
+        }
+
+        if (isMounted) setGeofenceInitialized(true);
+      } catch (err) {
+        logger.error('[Map] Setup failed:', err);
+        if (isMounted) setErrorMsg('Failed to initialize map');
       }
     };
-  }, []);
+
+    setupMap();
+
+    return () => {
+      isMounted = false;
+      if (foregroundWatch) foregroundWatch.remove();
+      if (statusInterval) clearInterval(statusInterval);
+      // Unsubscribe from geofence events
+      if ((setupMap as any).unsubscribe) {
+        (setupMap as any).unsubscribe();
+      }
+    };
+  }, [shareLocation, token]);
 
   // Fetch nearby users when location or radius changes
   const fetchNearbyUsers = useCallback(async () => {
@@ -134,12 +173,12 @@ const MapScreen = () => {
     }
   }, [location, token, shareLocation, radius]);
 
+  // Refresh nearby users when location changes (from low-frequency watch)
   useEffect(() => {
-    fetchNearbyUsers();
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchNearbyUsers, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNearbyUsers]);
+    if (location && shareLocation && token) {
+      fetchNearbyUsers();
+    }
+  }, [location, fetchNearbyUsers, shareLocation, token]);
 
   const centerOnUser = () => {
     if (location && mapRef.current) {
@@ -316,6 +355,26 @@ const MapScreen = () => {
           Your exact location is never shared
         </Text>
       </View>
+
+      {/* Geofence Status */}
+      {shareLocation && geofenceStatus && (
+        <View style={[styles.geofenceStatus, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <View style={styles.geofenceStatusRow}>
+            <Ionicons name="map-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.geofenceStatusText}>
+              Geofences: {geofenceStatus.geofenceCount} active
+            </Text>
+          </View>
+          {geofenceStatus.preciseTracking.length > 0 && (
+            <View style={styles.geofenceStatusRow}>
+              <Ionicons name="locate-outline" size={14} color={theme.colors.secondary} />
+              <Text style={[styles.geofenceStatusText, { color: theme.colors.secondary }]}>
+                Precise tracking: {geofenceStatus.preciseTracking.length} friend(s)
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Friend Selection Panel */}
       {selectedFriend && (
@@ -693,6 +752,30 @@ const styles = StyleSheet.create({
   calloutDesc: {
     fontSize: 12,
     color: '#6b7280',
+  },
+  geofenceStatus: {
+    position: 'absolute',
+    top: 100,
+    left: 16,
+    right: 60,
+    flexDirection: 'column',
+    gap: 4,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  geofenceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  geofenceStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
 

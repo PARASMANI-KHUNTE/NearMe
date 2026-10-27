@@ -11,6 +11,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import PermissionScreen from '../screens/PermissionScreen';
 import { socketService } from '../services/socketService';
+import { geofenceService } from '../services/geofenceService';
 import { logger } from '../utils/logger';
 
 const Stack = createNativeStackNavigator();
@@ -144,25 +145,44 @@ export const AppNavigator = () => {
       return;
     }
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       logger.info('[Navigator] Starting services after delay...');
 
-      socketService.connect()
-        .then(() => {
-          logger.info('[Navigator] Socket connected');
-          initializeSocketListeners();
-        })
-        .catch(err => logger.warn('[Navigator] Socket skip:', err.message));
+      // Connect socket
+      try {
+        await socketService.connect();
+        logger.info('[Navigator] Socket connected');
+        initializeSocketListeners();
+      } catch (err: unknown) {
+        logger.warn('[Navigator] Socket skip:', err instanceof Error ? err.message : String(err));
+      }
+
+      // Initialize geofencing if location sharing is enabled
+      if (shareLocation) {
+        try {
+          const token = useAuthStore.getState().token;
+          if (token) {
+            await geofenceService.initialize();
+            await geofenceService.refreshGeofences(token);
+            logger.info('[Navigator] Geofencing initialized');
+          }
+        } catch (err: unknown) {
+          logger.warn('[Navigator] Geofencing skip:', err instanceof Error ? err.message : String(err));
+        }
+      }
 
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, shareLocation]);
 
   // Cleanup on logout
   useEffect(() => {
     return () => {
       socketService.disconnect();
+      geofenceService.stop().catch((err: unknown) => {
+        logger.warn('[Navigator] Geofence stop error:', err instanceof Error ? err.message : String(err));
+      });
     };
   }, []);
 

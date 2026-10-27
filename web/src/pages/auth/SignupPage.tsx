@@ -1,3 +1,4 @@
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,6 +7,8 @@ import { UserPlus, User, Mail, Lock, ShieldCheck, ArrowRight } from 'lucide-reac
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import authService from '../../services/authService';
+import { GoogleAuthService } from '../../services/googleAuthService';
+import { env } from '../../config/env';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -34,6 +37,48 @@ export function SignupPage() {
     resolver: zodResolver(signupSchema),
   });
 
+  const [googleInitError, setGoogleInitError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Expose callback globally for the Google script to call
+    window.handleGoogleCredential = async (idToken: string) => {
+      try {
+        setGoogleInitError(null);
+        await authService.loginWithGoogle(idToken);
+        navigate('/'); // Redirect to home on success
+      } catch (error: any) {
+        setGoogleInitError(
+          error.response?.data?.message || 
+          error.message || 
+          'Google signup failed'
+        );
+      }
+    };
+
+    if (!env.googleClientId) {
+      setGoogleInitError('Missing VITE_GOOGLE_CLIENT_ID for web OAuth');
+      return () => {
+        delete window.handleGoogleCredential;
+      };
+    }
+
+    GoogleAuthService.initGoogleAuth()
+      .then(() => {
+        // Only render button if not on a mobile device where we'd prefer native flows
+        GoogleAuthService.renderGoogleButton('google-signup-button');
+      })
+      .catch((err) => {
+        setGoogleInitError(
+          err.message || 
+          'Failed to initialize Google login'
+        );
+      });
+
+    return () => {
+      delete window.handleGoogleCredential;
+    };
+  }, [navigate]);
+
   const onSubmit = async (data: SignupForm) => {
     try {
       await authService.register({
@@ -58,6 +103,25 @@ export function SignupPage() {
           <h1 className="text-3xl sm:text-4xl font-black text-[var(--text)] mb-3 tracking-tight">Create Identity</h1>
           <p className="text-sm sm:text-base text-[var(--text-muted)] font-medium">Join the network and stay connected privately.</p>
       </div>
+
+        {googleInitError ? (
+          <div className="mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-center justify-center text-center">
+            <p className="text-sm font-semibold text-error">⚠ {googleInitError}</p>
+          </div>
+        ) : (
+          <div className="mb-6 flex justify-center">
+            <div id="google-signup-button" className="w-full flex justify-center min-h-[40px]" />
+          </div>
+        )}
+
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[var(--border)]"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-4 bg-[var(--background)] text-[var(--text-muted)] font-medium">OR CONTINUE WITH EMAIL</span>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

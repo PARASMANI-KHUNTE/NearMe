@@ -29,6 +29,7 @@ interface UserSettings {
   locationSharingEnabled?: boolean;
   invisibleMode?: boolean;
   muteNotifications?: boolean;
+  preciseSharing?: boolean;
 }
 
 interface AppState {

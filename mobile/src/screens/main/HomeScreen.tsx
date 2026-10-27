@@ -18,6 +18,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/Button';
 import { LocationService } from '../../services/locationService';
+import { geofenceService } from '../../services/geofenceService';
 import { UserService } from '../../services/userService';
 import { api } from '../../services/api';
 import { logger } from '../../utils/logger';
@@ -34,6 +35,7 @@ const HomeScreen = () => {
   const [nearbyCount, setNearbyCount] = useState<number | null>(null);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [geofenceStatus, setGeofenceStatus] = useState<{ geofenceCount: number; preciseTracking: string[] } | null>(null);
 
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const contentTranslateY = useRef(new Animated.Value(16)).current;
@@ -62,7 +64,7 @@ const HomeScreen = () => {
     setSelectedRadius(radius);
   }, [radius]);
 
-  // Fetch nearby users count
+  // Fetch nearby users count (now uses Socket.io proximity_alert primarily)
   const fetchNearbyCount = useCallback(async () => {
     if (!token || !shareLocation) {
       setNearbyCount(0);
@@ -93,23 +95,68 @@ const HomeScreen = () => {
     }
   }, [radius, shareLocation, token]);
 
-  // Start location tracking when sharing is enabled
+  // Initialize geofencing when sharing is enabled
   useEffect(() => {
-    if (shareLocation && token) {
-      LocationService.startLocationUpdates(45000, () => {
+    let isMounted = true;
+
+    const setupGeofencing = async () => {
+      if (!shareLocation || !token) {
+        // Stop geofencing if disabled
+        await geofenceService.stop();
+        if (isMounted) setGeofenceStatus(null);
+        return;
+      }
+
+      try {
+        // Initialize geofence service
+        await geofenceService.initialize();
+
+        // Refresh geofences with current friend locations
+        await geofenceService.refreshGeofences(token);
+
+        // Subscribe to geofence events
+        const unsubscribe = geofenceService.subscribe((event) => {
+          logger.info(`[Home] Geofence ${event.type} for ${event.friendName}`);
+          // Trigger a nearby count refresh when entering/exiting regions
+          if (event.type === 'enter') {
+            fetchNearbyCount();
+          }
+        });
+
+        // Update status periodically
+        const statusInterval = setInterval(() => {
+          if (isMounted) {
+            setGeofenceStatus(geofenceService.getStatus());
+          }
+        }, 5000);
+
+        // Initial fetch
         fetchNearbyCount();
-      }).catch((error) => {
-        logger.info('[Home] Location updates skipped:', error.message);
-      });
-    } else {
-      LocationService.stopLocationUpdates();
-    }
+
+        return () => {
+          unsubscribe();
+          clearInterval(statusInterval);
+        };
+      } catch (error) {
+        logger.error('[Home] Geofencing setup failed:', error);
+        // Fallback to old behavior
+        LocationService.startLocationUpdates(60000, () => {
+          fetchNearbyCount();
+        }).catch((error) => {
+          logger.info('[Home] Location updates skipped:', error.message);
+        });
+      }
+    };
+
+    setupGeofencing();
 
     return () => {
-      LocationService.stopLocationUpdates();
+      isMounted = false;
+      // Cleanup handled by unsubscribe
     };
-  }, [fetchNearbyCount, shareLocation, token]);
+  }, [shareLocation, token, fetchNearbyCount]);
 
+  // Also refresh when friends list changes (via Socket.io friend_nearby)
   useEffect(() => {
     if (token) fetchNearbyCount();
   }, [fetchNearbyCount, token]);
@@ -320,6 +367,26 @@ const HomeScreen = () => {
             : 'Location sharing is disabled'}
         </Text>
       </View>
+
+      {/* Geofence Status (Debug/Info) */}
+      {shareLocation && geofenceStatus && (
+        <View style={styles.geofenceStatus}>
+          <View style={styles.geofenceStatusRow}>
+            <Ionicons name="map-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.geofenceStatusText}>
+              Geofences: {geofenceStatus.geofenceCount} active
+            </Text>
+          </View>
+          {geofenceStatus.preciseTracking.length > 0 && (
+            <View style={styles.geofenceStatusRow}>
+              <Ionicons name="locate-outline" size={14} color={theme.colors.secondary} />
+              <Text style={[styles.geofenceStatusText, { color: theme.colors.secondary }]}>
+                Precise tracking: {geofenceStatus.preciseTracking.length} friend(s)
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Radius Modal */}
       <Modal visible={isRadiusModalOpen} transparent animationType="none" onRequestClose={closeRadiusModal}>
@@ -592,6 +659,25 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: theme.typography.body.fontSize,
     fontWeight: '600',
+  },
+  geofenceStatus: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.sm,
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.2)',
+  },
+  geofenceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  geofenceStatusText: {
+    fontSize: theme.typography.small.fontSize,
+    color: theme.colors.text,
+    opacity: 0.8,
   },
 });
 

@@ -27,4 +27,7 @@ router.get('/nearby', requireAuth, validateRequest(nearbyQuerySchema, 'query'), 
 // GET /api/location/friends-status - Get friends location status
 router.get('/friends-status', requireAuth, LocationController.getFriendsLocationStatus);
 
+// GET /api/location/friends-for-geofencing - Get friends locations for geofence setup
+router.get('/friends-for-geofencing', requireAuth, LocationController.getFriendsForGeofencing);
+
 export default router;

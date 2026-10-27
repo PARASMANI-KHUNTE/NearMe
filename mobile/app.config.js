@@ -69,6 +69,12 @@ const expoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.parasmani.nearme',
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription: 'NearMe needs your location to show nearby friends and send proximity alerts.',
+      NSLocationAlwaysAndWhenInUseUsageDescription: 'NearMe uses background location to detect when friends are nearby, even when the app is closed.',
+      NSLocationAlwaysUsageDescription: 'NearMe uses background location to detect when friends are nearby, even when the app is closed.',
+      UIBackgroundModes: ['location', 'fetch'],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -77,6 +83,13 @@ const expoConfig = {
       backgroundColor: '#0F172A',
     },
     package: 'com.parasmani.nearme',
+    permissions: [
+      'ACCESS_FINE_LOCATION',
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_BACKGROUND_LOCATION',
+      'FOREGROUND_SERVICE',
+      'FOREGROUND_SERVICE_LOCATION',
+    ],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -86,6 +99,9 @@ const expoConfig = {
     'expo-updates',
     'expo-font',
     'expo-web-browser',
+    '@react-native-google-signin/google-signin',
+    'expo-background-fetch',
+    'expo-location',
   ],
   extra: {
     eas: {

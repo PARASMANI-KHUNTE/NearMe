@@ -7,7 +7,17 @@ let redisClient: RedisClientType;
 export const connectRedis = async (): Promise<void> => {
   const redisUri = getRedisUri();
 
-  redisClient = createClient({ url: redisUri }) as RedisClientType;
+  redisClient = createClient({
+    url: redisUri,
+    socket: {
+      reconnectStrategy: (retries) => {
+        if (retries > 3) {
+          return new Error('Max retries reached, stopping Redis reconnection.');
+        }
+        return Math.min(retries * 500, 2000);
+      }
+    }
+  }) as RedisClientType;
 
   redisClient.on('error', (err) => {
     logger.error({ err }, '❌ Redis Client Error');
@@ -21,7 +31,11 @@ export const connectRedis = async (): Promise<void> => {
     logger.warn('⚠️  Redis reconnecting...');
   });
 
-  await redisClient.connect();
+  try {
+    await redisClient.connect();
+  } catch (err) {
+    logger.error({ err }, '❌ Failed to connect to Redis on startup. Running without Redis.');
+  }
 };
 
 export { redisClient };

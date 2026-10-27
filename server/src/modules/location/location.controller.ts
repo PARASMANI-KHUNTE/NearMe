@@ -125,10 +125,10 @@ export class LocationController {
   static async getFriendsLocationStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user._id.toString();
-      
+
       // Get user's friends
       const friends = await FriendService.listFriends(userId);
-      
+
       if (friends.length === 0) {
         res.status(200).json({ success: true, data: [] });
         return;
@@ -137,7 +137,7 @@ export class LocationController {
       const friendIds = friends.map(f => f._id.toString());
 
       // Get locations for all friends
-      const locations = await Location.find({ 
+      const locations = await Location.find({
         userId: { $in: friendIds },
       });
 
@@ -162,6 +162,73 @@ export class LocationController {
       res.status(500).json({
         success: false,
         message: getErrorMessage(error, 'Error fetching friends location status'),
+      });
+    }
+  }
+
+  /**
+   * Get all visible friends' approximate locations for geofencing setup
+   * Returns friends with locationSharingEnabled=true and invisibleMode=false
+   * Includes approximate coordinates for setting up geofence regions
+   */
+  static async getFriendsForGeofencing(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user._id.toString();
+
+      // Get user's friends
+      const friends = await FriendService.listFriends(userId);
+
+      // Filter to only visible friends (location sharing enabled, not invisible)
+      const visibleFriends = friends.filter(
+        f => f.settings?.locationSharingEnabled && !f.settings?.invisibleMode
+      );
+
+      if (visibleFriends.length === 0) {
+        res.status(200).json({ success: true, data: [] });
+        return;
+      }
+
+      const friendIds = visibleFriends.map(f => f._id.toString());
+
+      // Get latest locations for all visible friends
+      const locations = await Location.find({
+        userId: { $in: friendIds },
+      });
+
+      // Map to response with approximate coordinates for geofencing
+      const friendsForGeofencing = visibleFriends.map(friend => {
+        const loc = locations.find(l => l.userId.toString() === friend._id.toString());
+        const isVisible = friend.settings?.locationSharingEnabled && !friend.settings?.invisibleMode;
+        const hasValidLocation = loc && loc.expiresAt && loc.expiresAt > new Date();
+
+        if (!hasValidLocation) {
+          return null; // No recent location
+        }
+
+        const friendCoordinates = loc.location.coordinates as [number, number];
+
+        return {
+          id: friend._id.toString(),
+          name: friend.name,
+          picture: friend.picture,
+          // Approximate coordinates (rounded for privacy, same as nearby endpoint)
+          longitude: roundCoordinateForPrivacy(friendCoordinates[0]),
+          latitude: roundCoordinateForPrivacy(friendCoordinates[1]),
+          // Include radius for geofence sizing (use friend's radius or default)
+          radius: friend.settings?.radius || 5000,
+          // Timestamp for staleness check
+          lastUpdated: loc.updatedAt,
+        };
+      }).filter(Boolean); // Remove friends without valid locations
+
+      res.status(200).json({
+        success: true,
+        data: friendsForGeofencing,
+      });
+    } catch (error: unknown) {
+      res.status(500).json({
+        success: false,
+        message: getErrorMessage(error, 'Error fetching friends for geofencing'),
       });
     }
   }

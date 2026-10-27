@@ -7,6 +7,8 @@ export interface ILocation extends Document {
     coordinates: [number, number]; // [longitude, latitude]
   };
   expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const LocationSchema = new Schema<ILocation>(

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
 import { theme } from '../theme';
 import { Button } from '../components/Button';
 import * as Location from 'expo-location';
@@ -39,12 +39,34 @@ const PermissionScreen = () => {
     }, [navigation, shareLocation]);
 
     const requestLocationPermission = async () => {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-            await enterApp();
-        } else {
-            alert('Location permission is required for NearMe to function.');
+        // Request foreground permission first
+        const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+        if (fgStatus !== 'granted') {
+            Alert.alert(
+                'Permission Required',
+                'Location permission is required for NearMe to function.',
+                [{ text: 'OK' }]
+            );
+            return;
         }
+
+        // If sharing is enabled, also request background permission for geofencing
+        if (shareLocation) {
+            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+            if (bgStatus !== 'granted') {
+                Alert.alert(
+                    'Background Location Recommended',
+                    'For the best experience (detecting friends nearby when app is closed), please enable "Always Allow" location access in Settings.',
+                    [
+                        { text: 'Not Now', onPress: enterApp },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
+                return;
+            }
+        }
+
+        await enterApp();
     };
 
     return (

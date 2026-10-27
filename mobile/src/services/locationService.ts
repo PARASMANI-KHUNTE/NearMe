@@ -16,7 +16,7 @@ export interface LocationUpdateResponse {
 
 export class LocationService {
   private static locationSubscription: Location.LocationSubscription | null = null;
-  private static updateInterval: number = 45000; // 45 seconds default
+  private static updateInterval: number = 60000; // 60 seconds default (reduced for battery)
 
   static async getForegroundPermissionStatus(): Promise<Location.PermissionStatus> {
     const { status } = await Location.getForegroundPermissionsAsync();
@@ -24,12 +24,21 @@ export class LocationService {
   }
 
   /**
-   * Request location permissions
+   * Request location permissions (foreground + background)
    */
-  static async requestPermissions(): Promise<boolean> {
+  static async requestPermissions(requireBackground: boolean = false): Promise<boolean> {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      return status === 'granted';
+      const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+      if (fgStatus !== 'granted') {
+        return false;
+      }
+
+      if (requireBackground) {
+        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+        return bgStatus === 'granted';
+      }
+
+      return true;
     } catch (error) {
       logger.error('Location permission request error:', error);
       return false;
@@ -39,7 +48,9 @@ export class LocationService {
   /**
    * Get current location
    */
-  static async getCurrentLocation(): Promise<Location.LocationObject | null> {
+  static async getCurrentLocation(
+    accuracy: Location.Accuracy = Location.Accuracy.Balanced
+  ): Promise<Location.LocationObject | null> {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
@@ -47,7 +58,7 @@ export class LocationService {
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy,
       });
       return location;
     } catch (error: any) {
@@ -57,7 +68,8 @@ export class LocationService {
   }
 
   /**
-   * Start periodic location updates
+   * Start foreground location updates (for when app is open)
+   * Uses balanced accuracy and longer intervals for battery efficiency
    * @param intervalMs - Update interval in milliseconds (default 60s)
    * @param onUpdate - Callback when location is updated
    */
@@ -76,12 +88,12 @@ export class LocationService {
       // Stop existing subscription
       this.stopLocationUpdates();
 
-      // Start watching position
+      // Start watching position with battery-friendly settings
       this.locationSubscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced,
+          accuracy: Location.Accuracy.Balanced, // NOT High - saves battery
           timeInterval: intervalMs,
-          distanceInterval: 50, // Minimum 50m movement
+          distanceInterval: 100, // 100m minimum movement (was 50m)
         },
         async (location) => {
           try {
@@ -98,6 +110,46 @@ export class LocationService {
     } catch (error: any) {
       logger.error('Start location updates error:', error);
       throw new Error(error.message || 'Failed to start location updates');
+    }
+  }
+
+  /**
+   * Start high-precision foreground tracking (for active meetups)
+   * Uses high accuracy and shorter intervals
+   */
+  static async startPreciseTracking(
+    intervalMs: number = 10000,
+    onUpdate?: (location: LocationUpdateResponse | null) => void
+  ): Promise<void> {
+    try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Location permission denied');
+      }
+
+      this.stopLocationUpdates();
+
+      this.locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: intervalMs,
+          distanceInterval: 10,
+        },
+        async (location) => {
+          try {
+            const { longitude, latitude } = location.coords;
+            const result = await this.updateLocation(longitude, latitude);
+            if (onUpdate) {
+              onUpdate(result);
+            }
+          } catch (error) {
+            logger.error('Precise location update failed:', error);
+          }
+        }
+      );
+    } catch (error: any) {
+      logger.error('Start precise tracking error:', error);
+      throw new Error(error.message || 'Failed to start precise tracking');
     }
   }
 
@@ -126,5 +178,12 @@ export class LocationService {
       logger.error('Update location error:', error);
       throw new Error(error.response?.data?.message || error.message || 'Update location failed');
     }
+  }
+
+  /**
+   * Check if currently tracking
+   */
+  static isTracking(): boolean {
+    return this.locationSubscription !== null;
   }
 }
