@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { User } from '../../modules/users/user.model';
 import { getJwtSecret } from '../config';
 import { AuthService } from '../../modules/auth/auth.service';
@@ -37,8 +37,12 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
     req.user = user;
     next();
-  } catch {
-    res.status(401).json({ success: false, message: 'Unauthorized - Invalid token' });
+  } catch (error) {
+    if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
+      res.status(401).json({ success: false, message: 'Unauthorized - Invalid token' });
+    } else {
+      res.status(503).json({ success: false, message: 'Service temporarily unavailable' });
+    }
   }
 };
 

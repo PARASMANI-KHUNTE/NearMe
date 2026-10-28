@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { theme } from '../../theme';
+import { AppTheme } from '../../theme';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/Button';
@@ -29,6 +29,7 @@ const RADIUS_OPTIONS = [100, 500, 1000, 2000, 3000, 5000];
 const HomeScreen = () => {
   const { shareLocation, setShareLocation, radius, setRadius, preciseSharing, setPreciseSharing, syncPreferences } = useAppStore();
   const { theme: appTheme } = useAppTheme();
+  const styles = useMemo(() => createStyles(appTheme), [appTheme]);
   const { user, token, setUser } = useAuthStore();
   const [isRadiusModalOpen, setIsRadiusModalOpen] = useState(false);
   const [selectedRadius, setSelectedRadius] = useState(radius);
@@ -267,18 +268,18 @@ const HomeScreen = () => {
       <View style={styles.sectionGlass}>
         <View style={styles.row}>
           <View style={styles.titleRow}>
-            <Ionicons name="locate-outline" size={18} color={theme.colors.accent} />
+            <Ionicons name="locate-outline" size={18} color={appTheme.colors.accent} />
             <Text style={styles.label}>Share Location</Text>
           </View>
           <View style={styles.switchRow}>
             {isSavingSettings && (
-              <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginRight: 8 }} />
+              <ActivityIndicator size="small" color={appTheme.colors.accent} style={{ marginRight: 8 }} />
             )}
             <Switch
               value={shareLocation}
               onValueChange={handleShareLocationToggle}
-              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-              thumbColor={shareLocation ? theme.colors.accent : theme.colors.text}
+              trackColor={{ false: appTheme.colors.border, true: appTheme.colors.primary }}
+              thumbColor={shareLocation ? appTheme.colors.accent : appTheme.colors.text}
             />
           </View>
         </View>
@@ -292,7 +293,7 @@ const HomeScreen = () => {
       {/* Alert Radius Card */}
       <View style={styles.sectionGlass}>
         <View style={styles.titleRow}>
-          <Ionicons name="radio-outline" size={18} color={theme.colors.accent} />
+          <Ionicons name="radio-outline" size={18} color={appTheme.colors.accent} />
           <Text style={styles.label}>Alert Radius</Text>
         </View>
         <Pressable style={styles.radiusSelector} onPress={openRadiusModal}>
@@ -300,7 +301,7 @@ const HomeScreen = () => {
             <Text style={styles.radiusValue}>{formatRadius(radius)}</Text>
             <Text style={styles.radiusHint}>Tap to change detection window</Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color={theme.colors.text} />
+          <Ionicons name="chevron-down" size={20} color={appTheme.colors.text} />
         </Pressable>
       </View>
 
@@ -308,7 +309,7 @@ const HomeScreen = () => {
       <View style={styles.sectionGlass}>
         <View style={styles.row}>
           <View style={styles.titleRow}>
-            <Ionicons name="speedometer-outline" size={18} color={theme.colors.accent} />
+            <Ionicons name="speedometer-outline" size={18} color={appTheme.colors.accent} />
             <Text style={styles.label}>High Precision Mode</Text>
           </View>
           <Switch
@@ -319,8 +320,8 @@ const HomeScreen = () => {
                 setPreciseSharing(!value);
               });
             }}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor={preciseSharing ? theme.colors.accent : theme.colors.text}
+            trackColor={{ false: appTheme.colors.border, true: appTheme.colors.primary }}
+            thumbColor={preciseSharing ? appTheme.colors.accent : appTheme.colors.text}
             disabled={!shareLocation}
           />
         </View>
@@ -332,11 +333,11 @@ const HomeScreen = () => {
       {/* Nearby Friends Card */}
       <View style={styles.card}>
         <View style={styles.cardIconRow}>
-          <Ionicons name="people-outline" size={28} color={theme.colors.secondary} />
+          <Ionicons name="people-outline" size={28} color={appTheme.colors.secondary} />
         </View>
         <Text style={styles.cardTitle}>Nearby Friends</Text>
         {isLoadingNearby ? (
-          <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginVertical: 8 }} />
+          <ActivityIndicator size="small" color={appTheme.colors.accent} style={{ marginVertical: 8 }} />
         ) : (
           <Text style={styles.cardCount}>
             {nearbyCount === null
@@ -359,7 +360,7 @@ const HomeScreen = () => {
         <Ionicons
           name={shareLocation ? 'shield-checkmark-outline' : 'eye-off-outline'}
           size={16}
-          color={shareLocation ? theme.colors.secondary : theme.colors.border}
+          color={shareLocation ? appTheme.colors.secondary : appTheme.colors.border}
         />
         <Text style={[styles.statusText, shareLocation ? styles.statusTextActive : styles.statusTextInactive]}>
           {shareLocation
@@ -372,15 +373,15 @@ const HomeScreen = () => {
       {shareLocation && geofenceStatus && (
         <View style={styles.geofenceStatus}>
           <View style={styles.geofenceStatusRow}>
-            <Ionicons name="map-outline" size={14} color={theme.colors.accent} />
+            <Ionicons name="map-outline" size={14} color={appTheme.colors.accent} />
             <Text style={styles.geofenceStatusText}>
               Geofences: {geofenceStatus.geofenceCount} active
             </Text>
           </View>
           {geofenceStatus.preciseTracking.length > 0 && (
             <View style={styles.geofenceStatusRow}>
-              <Ionicons name="locate-outline" size={14} color={theme.colors.secondary} />
-              <Text style={[styles.geofenceStatusText, { color: theme.colors.secondary }]}>
+              <Ionicons name="locate-outline" size={14} color={appTheme.colors.secondary} />
+              <Text style={[styles.geofenceStatusText, { color: appTheme.colors.secondary }]}>
                 Precise tracking: {geofenceStatus.preciseTracking.length} friend(s)
               </Text>
             </View>
@@ -415,9 +416,9 @@ const HomeScreen = () => {
                 value={selectedRadius}
                 onValueChange={handleSliderChange}
                 onSlidingComplete={handleSliderComplete}
-                minimumTrackTintColor={theme.colors.accent}
-                maximumTrackTintColor={theme.colors.border}
-                thumbTintColor={theme.colors.primary}
+                minimumTrackTintColor={appTheme.colors.accent}
+                maximumTrackTintColor={appTheme.colors.border}
+                thumbTintColor={appTheme.colors.primary}
               />
               <View style={styles.sliderRangeRow}>
                 <Text style={styles.sliderRangeText}>100m</Text>
@@ -436,9 +437,9 @@ const HomeScreen = () => {
                 >
                   <Text style={styles.modalOptionText}>{formatRadius(option)}</Text>
                   {isSelected ? (
-                    <Ionicons name="checkmark-circle" size={22} color={theme.colors.secondary} />
+                    <Ionicons name="checkmark-circle" size={22} color={appTheme.colors.secondary} />
                   ) : (
-                    <Ionicons name="ellipse-outline" size={22} color={theme.colors.border} />
+                    <Ionicons name="ellipse-outline" size={22} color={appTheme.colors.border} />
                   )}
                 </TouchableOpacity>
               );
@@ -452,7 +453,7 @@ const HomeScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

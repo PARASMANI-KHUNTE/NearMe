@@ -45,7 +45,7 @@ export function SignupPage() {
       try {
         setGoogleInitError(null);
         await authService.loginWithGoogle(idToken);
-        navigate('/'); // Redirect to home on success
+        navigate('/dashboard'); // Redirect to dashboard on success
       } catch (error: any) {
         setGoogleInitError(
           error.response?.data?.message || 

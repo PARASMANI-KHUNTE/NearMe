@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# NearMe Web Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Modern, responsive web client for NearMe built with React 19, TypeScript, Vite, Tailwind CSS v4, Zustand, and React-Leaflet.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Responsive Modern UI**: Glassmorphic styling, Tailwind CSS v4, dark/light theme support.
+- **Interactive Proximity Maps**: React-Leaflet integration displaying coarse friend proximity zones with custom radar animations.
+- **Real-Time Synchronization**: Socket.io client with automatic exponential reconnection and token refresh synchronization.
+- **Resilient Auth**: Secure JWT storage with auto-refresh interceptors, Google Sign-In with `@google/genai` web credentials, and custom 404 page.
 
-## React Compiler
+## Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+web/
+├── src/
+│   ├── app/               # Root app layout, providers, and router config
+│   ├── components/        # Reusable UI primitives (Button, Card, Input, ErrorBoundary)
+│   ├── config/            # Environment variable bindings
+│   ├── pages/             # Route views (Auth, Dashboard, Friends, Map, Profile, 404)
+│   ├── services/          # Axios HTTP client, Socket.io service, Google OAuth
+│   ├── store/             # Zustand state stores (auth, proximity, notifications)
+│   ├── styles/            # Tailwind CSS and theme design tokens
+│   ├── App.tsx            # Root application shell
+│   └── main.tsx           # Entry point
+├── index.html             # HTML entry with Open Graph & SEO meta tags
+├── vite.config.ts         # Vite build configuration
+└── package.json
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- Node.js 18+
+- Backend server running (default: `http://localhost:3000`)
+
+### Setup & Run
+
+1. Navigate to web directory:
+   ```bash
+   cd web
+   ```
+
+2. Copy environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+4. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+5. Build for production:
+   ```bash
+   npm run build
+   ```

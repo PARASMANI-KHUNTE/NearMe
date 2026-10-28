@@ -79,19 +79,25 @@ export class ProximityService {
   }
 
   static async triggerProximityAlert(userA: string, userB: string, distance: number): Promise<void> {
-    const redis = getRedis();
     // Deterministic key, same regardless of who triggered who.
     const cooldownKey = `proximity:cooldown:${[userA, userB].sort().join('_')}`;
 
-    // Atomic SET NX EX only sets if key does not exist.
-    const acquired = await redis.set(cooldownKey, '1', {
-      EX: NOTIFICATION_COOLDOWN_SECONDS,
-      NX: true,
-    });
+    // Check cooldown via Redis (graceful fallback if Redis is unavailable)
+    try {
+      const redis = getRedis();
+      // Atomic SET NX EX only sets if key does not exist.
+      const acquired = await redis.set(cooldownKey, '1', {
+        EX: NOTIFICATION_COOLDOWN_SECONDS,
+        NX: true,
+      });
 
-    if (!acquired) {
-      logger.debug({ userA, userB }, 'Proximity alert skipped - cooldown active');
-      return;
+      if (!acquired) {
+        logger.debug({ userA, userB }, 'Proximity alert skipped - cooldown active');
+        return;
+      }
+    } catch (redisError) {
+      logger.warn({ userA, userB, error: redisError }, 'Redis unavailable - skipping cooldown check');
+      // Continue without cooldown rather than crashing the proximity pipeline
     }
 
     const approxDistance = Math.round(distance / 100) * 100;

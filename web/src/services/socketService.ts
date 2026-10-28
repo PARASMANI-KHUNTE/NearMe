@@ -31,8 +31,9 @@ export const socketService = {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
       timeout: 20000,
     });
 
@@ -42,6 +43,14 @@ export const socketService = {
 
     socket.on('disconnect', (reason) => {
       logger.info('Socket disconnected:', reason);
+    });
+
+    // Re-authenticate with fresh token on reconnect attempt
+    socket.io.on('reconnect_attempt', () => {
+      const freshToken = useAuthStore.getState().token;
+      if (socket && freshToken) {
+        socket.auth = { token: freshToken };
+      }
     });
 
     socket.on('connect_error', (error) => {

@@ -182,28 +182,39 @@ nearme/
 
 ## 🌐 API Endpoints
 
+Explore the interactive OpenAPI documentation at `/api-docs`.
+
 ### Authentication
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login with email/password
-- `POST /api/auth/google` - Login with Google OAuth
-- `GET /api/users/profile` - Get user profile
+- `POST /api/auth/google` - Login with Google OAuth ID token
+- `POST /api/auth/refresh-token` - Refresh expired access token
+- `POST /api/auth/forgot-password` - Request password reset code
+- `POST /api/auth/reset-password` - Reset password with token
+- `POST /api/auth/verify-email` - Verify email verification code
+- `POST /api/auth/resend-verification` - Resend verification email
+
+### Users
+- `GET /api/users/me` - Get current user profile
+- `PUT /api/users/settings` - Update privacy & proximity settings
 
 ### Friends
-- `GET /api/friends` - Get friends list
+- `GET /api/friends` - Get friends list with proximity status
 - `POST /api/friends/request` - Send friend request
 - `POST /api/friends/request/:id/accept` - Accept request
 - `POST /api/friends/request/:id/reject` - Reject request
 - `DELETE /api/friends/:id` - Remove friend
-- `GET /api/friends/search` - Search users
+- `GET /api/friends/search` - Search users by NearMe unique ID
 
 ### Location
-- `POST /api/location/update` - Update user location
-- `GET /api/location/nearby` - Get nearby users
+- `POST /api/location/update` - Update user GPS coordinates
+- `GET /api/location/nearby` - Get nearby friends with fuzzy distances
 - `GET /api/location/friends-status` - Get friends location status
 
 ### Notifications
-- `GET /api/notifications` - Get notifications
-- `POST /api/notifications/:id/read` - Mark as read
+- `GET /api/notifications` - Get user notifications
+- `PATCH /api/notifications/:id/read` - Mark notification as read
+- `PATCH /api/notifications/read-all` - Mark all notifications as read
 
 ## 🔄 Real-time Features
 

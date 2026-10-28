@@ -1,9 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { env } from '../config/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStoredToken } from './authStorage';
 import { logger } from '../utils/logger';
-
-const TOKEN_KEY = 'auth_token';
 
 export type NotificationType = 'friend_request' | 'friend_accepted' | 'proximity_alert' | 'meet_request';
 
@@ -44,7 +42,7 @@ class SocketService {
     }
 
     this.connectionPromise = (async () => {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const token = await getStoredToken();
 
       if (!token) {
         throw new Error('No auth token');

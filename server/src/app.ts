@@ -200,7 +200,7 @@ const landingPage = `<!DOCTYPE html>
           Use the health endpoint to confirm uptime and the API docs to inspect available routes.
         </p>
         <div class="actions">
-          <a class="button button-primary" href="/docs">Open API docs</a>
+          <a class="button button-primary" href="/api-docs">Open API docs</a>
           <a class="button button-secondary" href="/health">Check health</a>
         </div>
       </section>
@@ -259,18 +259,8 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  keyGenerator: getClientIp,
-  message: { success: false, message: 'Too many authentication attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 app.use('/api/', generalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+// Note: auth-specific rate limiting is handled in auth.routes.ts with stricter limits
 
 app.use(
   pinoHttp({

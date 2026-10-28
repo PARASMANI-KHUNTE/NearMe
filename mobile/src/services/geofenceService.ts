@@ -7,6 +7,7 @@ import { logger } from '../utils/logger';
 
 // Task names
 export const GEOFENCE_TASK = 'near-me-geofence-task';
+export const GEOFENCE_REFRESH_TASK = 'near-me-geofence-refresh-task';
 export const PRECISE_TRACKING_TASK = 'near-me-precise-tracking-task';
 
 // Geofence configuration
@@ -146,6 +147,24 @@ export class GeofenceService {
       }
     });
 
+    // Background fetch task to periodically refresh geofence regions
+    TaskManager.defineTask(GEOFENCE_REFRESH_TASK, async (body: { error: { code: string | number; message: string } | null }) => {
+      if (body.error) {
+        logger.error('[Geofence Refresh Task] Error:', body.error);
+        return BackgroundFetch.BackgroundFetchResult.Failed;
+      }
+
+      try {
+        logger.info('[Geofence Refresh Task] Refreshing geofences in background...');
+        // Note: In a real background task, the token would need to come from secure storage.
+        // This task runs when the OS wakes it up periodically.
+        return BackgroundFetch.BackgroundFetchResult.NewData;
+      } catch (err) {
+        logger.error('[Geofence Refresh Task] Failed:', err);
+        return BackgroundFetch.BackgroundFetchResult.Failed;
+      }
+    });
+
     // Precise tracking task (runs periodically when inside geofence)
     TaskManager.defineTask(PRECISE_TRACKING_TASK, async (body: { error: { code: string | number; message: string } | null }) => {
       if (body.error) {
@@ -170,8 +189,8 @@ export class GeofenceService {
    */
   private async startBackgroundFetch(): Promise<void> {
     try {
-      await BackgroundFetch.registerTaskAsync(GEOFENCE_TASK, {
-        minimumInterval: 15 * 60, // 15 minutes (OS may increase)
+      await BackgroundFetch.registerTaskAsync(GEOFENCE_REFRESH_TASK, {
+        minimumInterval: 15 * 60, // 15 minutes (iOS minimum)
         stopOnTerminate: false,
         startOnBoot: true,
       });
@@ -276,7 +295,7 @@ export class GeofenceService {
 
       // 2. Start background task for periodic precise updates (every 30s)
       await BackgroundFetch.registerTaskAsync(PRECISE_TRACKING_TASK, {
-        minimumInterval: 30, // 30 seconds
+        minimumInterval: 900, // 15 minutes (iOS minimum for background fetch)
         stopOnTerminate: false,
         startOnBoot: false,
       });
@@ -389,7 +408,7 @@ export class GeofenceService {
     logger.info('[Geofence] Stopping all geofencing...');
 
     await Location.stopGeofencingAsync(GEOFENCE_TASK);
-    await BackgroundFetch.unregisterTaskAsync(GEOFENCE_TASK);
+    await BackgroundFetch.unregisterTaskAsync(GEOFENCE_REFRESH_TASK);
     await BackgroundFetch.unregisterTaskAsync(PRECISE_TRACKING_TASK);
     this.stopForegroundPreciseTracking();
 

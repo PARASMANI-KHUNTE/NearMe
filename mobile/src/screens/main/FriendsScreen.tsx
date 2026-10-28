@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { AppTheme } from '../../theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { Button } from '../../components/Button';
 import { FriendService, FriendRequest, FriendRequestUser } from '../../services/friendService';
 import { UserService } from '../../services/userService';
@@ -30,6 +31,8 @@ interface FriendWithStatus extends User {
 
 const FriendsScreen = () => {
   const { token } = useAuthStore();
+  const { theme: appTheme } = useAppTheme();
+  const styles = useMemo(() => createStyles(appTheme), [appTheme]);
   const [activeTab, setActiveTab] = useState<TabType>('friends');
   const [friends, setFriends] = useState<FriendWithStatus[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -232,7 +235,7 @@ const FriendsScreen = () => {
         style={[styles.iconBtn, styles.messageBtn]}
         onPress={() => handleMessageFriend(item.name)}
       >
-        <Ionicons name="chatbubble-outline" size={16} color={theme.colors.primary} />
+        <Ionicons name="chatbubble-outline" size={16} color={appTheme.colors.primary} />
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.proximityBtn, hasProximity ? styles.proximityBtnOn : styles.proximityBtnOff]}
@@ -241,7 +244,7 @@ const FriendsScreen = () => {
         <Ionicons
           name={hasProximity ? 'location-outline' : 'ban-outline'}
           size={16}
-          color={hasProximity ? theme.colors.secondary : theme.colors.border}
+          color={hasProximity ? appTheme.colors.secondary : appTheme.colors.border}
         />
       </TouchableOpacity>
       <TouchableOpacity
@@ -313,9 +316,9 @@ const FriendsScreen = () => {
         disabled={actionLoading === item.id}
       >
         {actionLoading === item.id ? (
-          <ActivityIndicator size="small" color={theme.colors.accent} />
+          <ActivityIndicator size="small" color={appTheme.colors.accent} />
         ) : (
-          <Ionicons name="person-add-outline" size={20} color={theme.colors.accent} />
+          <Ionicons name="person-add-outline" size={20} color={appTheme.colors.accent} />
         )}
       </TouchableOpacity>
     </View>
@@ -342,7 +345,7 @@ const FriendsScreen = () => {
                     : 'search-outline'
               }
               size={16}
-              color={activeTab === tab ? theme.colors.primary : theme.colors.border}
+              color={activeTab === tab ? appTheme.colors.primary : appTheme.colors.border}
             />
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -364,16 +367,16 @@ const FriendsScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={theme.colors.accent}
+              tintColor={appTheme.colors.accent}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               {isLoading ? (
-                <ActivityIndicator size="large" color={theme.colors.accent} />
+                <ActivityIndicator size="large" color={appTheme.colors.accent} />
               ) : (
                 <>
-                  <Ionicons name="people-outline" size={48} color={theme.colors.border} />
+                  <Ionicons name="people-outline" size={48} color={appTheme.colors.border} />
                   <Text style={styles.emptyText}>No friends yet</Text>
                   <Text style={styles.emptySubtext}>Search for users to add as friends</Text>
                   <Button
@@ -398,12 +401,12 @@ const FriendsScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={theme.colors.accent}
+              tintColor={appTheme.colors.accent}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="mail-outline" size={48} color={theme.colors.border} />
+              <Ionicons name="mail-outline" size={48} color={appTheme.colors.border} />
               <Text style={styles.emptyText}>No pending requests</Text>
             </View>
           }
@@ -414,11 +417,11 @@ const FriendsScreen = () => {
       {activeTab === 'search' && (
         <View style={{ flex: 1 }}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={theme.colors.accent} style={styles.searchIcon} />
+            <Ionicons name="search" size={18} color={appTheme.colors.accent} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by NearMe ID..."
-              placeholderTextColor={theme.colors.border}
+              placeholderTextColor={appTheme.colors.border}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onSubmitEditing={handleSearch}
@@ -426,7 +429,7 @@ const FriendsScreen = () => {
               autoCapitalize="none"
             />
             {isSearching ? (
-              <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginRight: 12 }} />
+              <ActivityIndicator size="small" color={appTheme.colors.accent} style={{ marginRight: 12 }} />
             ) : (
               <TouchableOpacity onPress={handleSearch} style={styles.searchBtn} disabled={!searchQuery.trim()}>
                 <Text style={[styles.searchBtnText, !searchQuery.trim() && { opacity: 0.4 }]}>Search</Text>
@@ -440,7 +443,7 @@ const FriendsScreen = () => {
             renderItem={renderSearchResult}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={48} color={theme.colors.border} />
+                <Ionicons name="search-outline" size={48} color={appTheme.colors.border} />
                 <Text style={styles.emptyText}>
                   {searchQuery.trim()
                     ? 'No users found'
@@ -455,7 +458,7 @@ const FriendsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

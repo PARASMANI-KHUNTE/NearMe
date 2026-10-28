@@ -13,6 +13,7 @@ import { FriendsPage } from '../pages/friends/FriendsPage';
 import { NotificationsPage } from '../pages/notifications/NotificationsPage';
 import { MapPage } from '../pages/map/MapPage';
 import { ProfilePage } from '../pages/profile/ProfilePage';
+import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const router = createBrowserRouter([
   {
@@ -79,5 +80,9 @@ export const router = createBrowserRouter([
         element: <ProfilePage />,
       },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ]);

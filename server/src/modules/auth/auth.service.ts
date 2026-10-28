@@ -108,7 +108,9 @@ export class AuthService {
     const resetToken = crypto.randomBytes(20).toString('hex');
     const resetExpires = new Date(Date.now() + 3600000); // 1 hour
 
-    user.resetPasswordToken = resetToken;
+    // Store hashed token in DB (unhashed token goes in the email link)
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = resetExpires;
     await user.save();
 
@@ -119,8 +121,10 @@ export class AuthService {
   }
 
   static async resetPassword(token: string, password: string): Promise<{ user: IUser; token: string; refreshToken: string }> {
+    // Hash the incoming token to compare against the stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: new Date() },
     }).select('+password');
 

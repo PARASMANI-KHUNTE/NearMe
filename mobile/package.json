@@ -34,7 +34,6 @@
     "expo-task-manager": "~55.0.20",
     "expo-updates": "^55.0.21",
     "expo-web-browser": "~55.0.14",
-    "lucide-react-native": "^1.17.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.73.1",
@@ -49,6 +48,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.10",
+    "babel-preset-expo": "~55.0.8",
     "typescript": "~5.9.2"
   },
   "private": true

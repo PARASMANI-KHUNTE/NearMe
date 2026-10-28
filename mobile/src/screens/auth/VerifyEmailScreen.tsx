@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
-import { Mail, CheckCircle2 } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { AuthLayout } from '../../components/auth/AuthLayout';
@@ -66,7 +66,7 @@ const VerifyEmailScreen: React.FC<VerifyEmailScreenProps> = ({ route, navigation
     >
       <View style={styles.iconContainer}>
         <View style={styles.iconWrapper}>
-          <Mail color="#818CF8" size={32} />
+          <Ionicons name="mail-outline" color="#818CF8" size={32} />
         </View>
         <Text style={styles.subtitle}>
           We've sent a 6-digit code to{'\n'}
@@ -81,7 +81,7 @@ const VerifyEmailScreen: React.FC<VerifyEmailScreenProps> = ({ route, navigation
         onChangeText={(text) => setCode(text.replace(/\D/g, ''))}
         keyboardType="number-pad"
         maxLength={6}
-        icon={<CheckCircle2 color="#94A3B8" size={20} />}
+        icon={<Ionicons name="checkmark-circle-outline" color="#94A3B8" size={20} />}
         style={styles.codeInput}
       />
 

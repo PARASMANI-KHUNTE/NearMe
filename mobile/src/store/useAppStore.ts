@@ -33,8 +33,6 @@ interface UserSettings {
 }
 
 interface AppState {
-  user: User | null;
-  token: string | null;
   friends: Friend[];
   notifications: Notification[];
   radius: number;
@@ -45,8 +43,6 @@ interface AppState {
   themeMode: ThemeMode;
 
   // Actions
-  setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   setFriends: (friends: Friend[]) => void;
   setNotifications: (notifications: Notification[]) => void;
   setRadius: (radius: number) => void;
@@ -90,8 +86,6 @@ const storage = {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      user: null,
-      token: null,
       friends: [],
       notifications: [],
       radius: 5000,
@@ -101,8 +95,6 @@ export const useAppStore = create<AppState>()(
       muteNotifications: false,
       themeMode: 'night',
 
-      setUser: (user) => set({ user }),
-      setToken: (token) => set({ token }),
       setFriends: (friends) => set({ friends }),
       setNotifications: (notifications) => set({ notifications }),
       setRadius: (radius) => set({ radius }),
@@ -144,15 +136,13 @@ export const useAppStore = create<AppState>()(
       toggleThemeMode: () => set((state) => ({
         themeMode: state.themeMode === 'night' ? 'day' : 'night',
       })),
-      logout: () => set({ user: null, token: null }),
+      logout: () => set({}),
     }),
     {
       name: 'app-storage',
       storage: createJSONStorage(() => storage),
       // Persist all except friends and notifications (they can be loaded on demand)
       partialize: (state) => ({
-        user: state.user,
-        token: state.token,
         radius: state.radius,
         shareLocation: state.shareLocation,
         invisibleMode: state.invisibleMode,

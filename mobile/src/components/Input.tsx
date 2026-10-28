@@ -6,12 +6,14 @@ interface InputProps extends TextInputProps {
   label: string;
   error?: string;
   isPassword?: boolean;
+  icon?: React.ReactNode;
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
   error,
   isPassword = false,
+  icon,
   ...props
 }) => {
   const [isSecure, setIsSecure] = useState(isPassword);
@@ -30,11 +32,17 @@ export const Input: React.FC<InputProps> = ({
               borderColor: theme.colors.border,
             },
             error ? [styles.inputError, { borderColor: theme.colors.danger }] : null,
+            (isPassword || icon) ? { paddingRight: 48 } : null,
           ]}
           placeholderTextColor={theme.colors.border}
           secureTextEntry={isSecure}
           {...props}
         />
+        {icon && !isPassword && (
+          <View style={styles.eyeIcon}>
+            {icon}
+          </View>
+        )}
         {isPassword && (
           <TouchableOpacity 
             onPress={() => setIsSecure(!isSecure)}

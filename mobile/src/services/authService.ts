@@ -32,58 +32,6 @@ export interface AuthResponse {
   message: string;
 }
 
-const getApiUrl = (path: string): string => {
-  const baseUrl = env.API_BASE_URL.replace(/\/+$/, '');
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-
-  return `${baseUrl}${normalizedPath}`;
-};
-
-const parseJsonResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-
-  if (!text) {
-    return {} as T;
-  }
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`Invalid JSON response from server (${response.status})`);
-  }
-};
-
-const postGoogleLoginWithFetch = async (idToken: string): Promise<AuthResponse> => {
-  const url = getApiUrl('/auth/google');
-
-  logger.info('[AuthService] loginWithGoogle fetch request', {
-    url,
-    hasIdToken: !!idToken,
-  });
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ idToken }),
-  });
-
-  const data = await parseJsonResponse<AuthResponse>(response);
-
-  logger.info('[AuthService] loginWithGoogle fetch response', {
-    status: response.status,
-    success: data.success,
-  });
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.message || `Google login failed (${response.status})`);
-  }
-
-  return data;
-};
-
 export class AuthService {
   /**
    * Authenticate user with Google idToken
@@ -96,18 +44,18 @@ export class AuthService {
         hasIdToken: !!idToken,
       });
 
-      const response = await postGoogleLoginWithFetch(idToken);
+      const response = await api.post<AuthResponse>('/auth/google', { idToken });
 
-      if (!response.success) {
-        throw new Error(response.message || 'Authentication failed');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Authentication failed');
       }
 
-      const { user, token } = response.data;
+      const { user, token } = response.data.data;
 
       // Store token securely
       await setStoredToken(token);
 
-      // Store user data (non-sensitive, can be in secure store or async storage)
+      // Store user data
       await setStoredUser(user);
 
       return { user, token };

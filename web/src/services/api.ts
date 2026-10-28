@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { useAuthStore } from '../store/authStore';
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -98,13 +99,14 @@ class ApiService {
 
           try {
             const { data } = await axios.post(
-              `${this.api.defaults.baseURL}/auth/refresh`,
+              `${this.api.defaults.baseURL}/api/auth/refresh`,
               {},
               { withCredentials: true }
             );
 
             const newToken = data.data.token;
             sessionStorage.setItem('token', newToken);
+            useAuthStore.getState().setToken(newToken);
 
             if (config.headers) {
               config.headers.Authorization = `Bearer ${newToken}`;

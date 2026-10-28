@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,16 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { AppTheme } from '../../theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { Notification } from '../../services/notificationService';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
 
 const NotificationsScreen = () => {
   const { token } = useAuthStore();
+  const { theme: appTheme } = useAppTheme();
+  const styles = useMemo(() => createStyles(appTheme), [appTheme]);
   const { 
     notifications, 
     isLoading, 
@@ -57,10 +60,10 @@ const NotificationsScreen = () => {
 
   const getNotificationColor = (type: string) => {
     switch (type) {
-      case 'proximity_alert': return theme.colors.accent;
-      case 'friend_request': return theme.colors.secondary;
-      case 'meet_request': return theme.colors.primary;
-      default: return theme.colors.text;
+      case 'proximity_alert': return appTheme.colors.accent;
+      case 'friend_request': return appTheme.colors.secondary;
+      case 'meet_request': return appTheme.colors.primary;
+      default: return appTheme.colors.text;
     }
   };
 
@@ -114,7 +117,7 @@ const NotificationsScreen = () => {
 
       {unreadCount > 0 && (
         <View style={styles.badge}>
-          <Ionicons name="notifications" size={14} color={theme.colors.primary} />
+          <Ionicons name="notifications" size={14} color={appTheme.colors.primary} />
           <Text style={styles.badgeText}>{unreadCount} unread</Text>
         </View>
       )}
@@ -127,16 +130,16 @@ const NotificationsScreen = () => {
           <RefreshControl
             refreshing={isLoading}
             onRefresh={onRefresh}
-            tintColor={theme.colors.accent}
+            tintColor={appTheme.colors.accent}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             {isLoading ? (
-              <ActivityIndicator size="large" color={theme.colors.accent} />
+              <ActivityIndicator size="large" color={appTheme.colors.accent} />
             ) : (
               <>
-                <Ionicons name="notifications-off-outline" size={56} color={theme.colors.border} />
+                <Ionicons name="notifications-off-outline" size={56} color={appTheme.colors.border} />
                 <Text style={styles.emptyText}>No notifications yet</Text>
                 <Text style={styles.emptySubtext}>
                   You'll be notified when friends are nearby or send you requests
@@ -150,7 +153,7 @@ const NotificationsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

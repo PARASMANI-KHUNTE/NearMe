@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 import type { AuthState, User } from '../types';
 
+const safeParseUser = (): User | null => {
+  try {
+    const raw = sessionStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    sessionStorage.removeItem('user');
+    return null;
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   token: sessionStorage.getItem('token') || null,
-  user: JSON.parse(sessionStorage.getItem('user') || 'null') as User | null,
+  user: safeParseUser(),
   isAuthenticated: !!sessionStorage.getItem('token'),
 
   setToken: (token) => {

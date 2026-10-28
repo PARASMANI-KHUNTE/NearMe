@@ -17,6 +17,8 @@ export interface LocationUpdateResponse {
 export class LocationService {
   private static locationSubscription: Location.LocationSubscription | null = null;
   private static updateInterval: number = 60000; // 60 seconds default (reduced for battery)
+  private static pendingUpdates: { longitude: number; latitude: number; timestamp: number }[] = [];
+  private static readonly MAX_PENDING = 10;
 
   static async getForegroundPermissionStatus(): Promise<Location.PermissionStatus> {
     const { status } = await Location.getForegroundPermissionsAsync();
@@ -164,8 +166,9 @@ export class LocationService {
   }
 
   /**
-   * Update user's current location
-   * Backend may skip update if movement < threshold
+   * Update user's current location.
+   * On failure, queues the update for retry on the next successful call.
+   * Backend may skip update if movement < threshold.
    */
   static async updateLocation(longitude: number, latitude: number): Promise<LocationUpdateResponse | null> {
     try {
@@ -173,11 +176,46 @@ export class LocationService {
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to update location');
       }
+
+      // Flush any pending updates now that connectivity is back
+      this.flushPendingUpdates();
+
       return response.data.data;
     } catch (error: any) {
-      logger.error('Update location error:', error);
+      // Queue for retry on network / server errors
+      this.enqueuePending(longitude, latitude);
+      logger.error('Update location error (queued for retry):', error);
       throw new Error(error.response?.data?.message || error.message || 'Update location failed');
     }
+  }
+
+  /**
+   * Queue a failed location update for retry.
+   * Keeps only the most recent MAX_PENDING entries.
+   */
+  private static enqueuePending(longitude: number, latitude: number): void {
+    this.pendingUpdates.push({ longitude, latitude, timestamp: Date.now() });
+    if (this.pendingUpdates.length > this.MAX_PENDING) {
+      this.pendingUpdates = this.pendingUpdates.slice(-this.MAX_PENDING);
+    }
+    logger.debug(`[Location] ${this.pendingUpdates.length} update(s) queued`);
+  }
+
+  /**
+   * Flush queued location updates in the background.
+   * Only sends the most recent queued update (the rest are stale).
+   */
+  private static flushPendingUpdates(): void {
+    if (this.pendingUpdates.length === 0) return;
+
+    // Only the most recent queued point matters
+    const latest = this.pendingUpdates[this.pendingUpdates.length - 1];
+    this.pendingUpdates = [];
+
+    // Fire-and-forget — don't re-throw or re-queue
+    api.post('/location/update', { longitude: latest.longitude, latitude: latest.latitude }).catch((err) => {
+      logger.warn('[Location] Failed to flush queued update:', err);
+    });
   }
 
   /**
@@ -187,3 +225,4 @@ export class LocationService {
     return this.locationSubscription !== null;
   }
 }
+
